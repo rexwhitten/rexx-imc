@@ -23,6 +23,8 @@ char **argv;
 {
    int fifo=1;                       /* fifo or lifo */
    int c;
+   int x2d();
+   int pop();
    static char *opts[]={"-fifo","-lifo","-string","-pop","-peek","-drop",
                         "-num","-print"};  /* All the allowed options */
    static int optnum=8;              /* The number of allowed options */
