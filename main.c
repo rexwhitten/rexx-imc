@@ -23,7 +23,7 @@ static RXSTRING arglist;       /* argument list to main program */
 static RXSTRING instore[2];    /* "instore" argument for RexxStart */
 static RXSTRING answer;
 
-main(argc,argv)  /* This function gives an interface between the command */
+int main(argc,argv)  /* This function gives an interface between the command */
 int argc;        /* line and the API function RexxStart(). */
 char *argv[];
 {

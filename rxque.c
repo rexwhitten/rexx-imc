@@ -31,7 +31,7 @@ int first,last;                      /* First and last elements in circle */
 int empty;                           /* Is stack empty when first==last? */
 unsigned max;                        /* Number of stack elements allocated */
 
-main(argc,argv)           /* Specify "-csh" and/or a filename */
+int main(argc,argv)           /* Specify "-csh" and/or a filename */
 int argc;
 char **argv;
 {

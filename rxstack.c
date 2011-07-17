@@ -17,7 +17,7 @@ char *buff;                          /* An input buffer */
 unsigned bufflen;                    /* The amount of memory allocated */
 int s;                               /* The socket fd */
 
-main(argc,argv)
+int main(argc,argv)
 int argc;
 char **argv;
 {
