@@ -99,27 +99,11 @@ char *allocm Args((unsigned size));
 void die Args((int rc));
 char *interpreter Args((int *anslen,int start,                                  /* Interpret program lines */
                         char *callname,long calltype,char *args[],int arglen[],int inherit,int delay));
-static void doaddress Args((char **line,int env));                              /* Address a command to an environment */
-static void parse Args((char *list[],int len[],int up,char *line,int *ptr));    /* PARSE strings with a template */
-static char uc1 Args((int c,int up));                                           /* Uppercase c, if up */
-static void pset1 Args((char *list,int listlen,char *val,int len,int up));      /* Tokenise a string into variables */
-static void pset Args((char *varname,int namelen,char *val,int len,int up));    /* Assign a PARSE result to a variable */
-static int findsigl Args((int *level));                                         /* Find most recent line number */
-static void getcallargs Args((char *args[],int arglen[],int argc));             /* Unstack parameters in a CALL instruc */
 int rxcall Args((int stmt,char *name,int argc,int lit,long calltype));          /* Call a procedure */
 char *rxinterp Args((char *exp,int len,int *rlen,char *name,long calltype,      /* INTERPRET a string */
                      char *args[],int arglen[]));
-static void doconds Args((void));                                               /* Check for delayed conditions and trap them */
 void settrace Args((char *));                                                   /* Set trace according to the given option */
 int setoption Args((char *option,int len));                                     /* Set an option from the OPTIONS instruction */
-static int gettrap Args((char **lineptr,int on,int *stmt));                     /* Get a trap name after "call/signal on" */
-static void testvarname Args((char **line,char *var,int len));                  /* Test the symbol against a stored name */
-static void skipstmt Args((void));                                              /* Skip the current instruction */
-static void stepdo Args((void));                                                /* Step past the current DO */
-static void stepselect Args((void));                                            /* Step past the current SELECT */
-static void stepif Args((void));                                                /* Step past the current IF */
-static void stepwhen Args((void));                                              /* Step past the current WHEN */
-static void findend Args((void));                                               /* Find the next END */
 void on_halt Args((void));                                                      /* Find the line number at which halt occurred */
 
 /* in calc.c */
@@ -220,10 +204,6 @@ int envcall Args((int num,char *cmd, int len, char **ans, int *anslen));        
 int funccall Args((unsigned long (*func)(),char *name,int argc));                   /* call a function by SAA calling sequence */
 int unixcall Args((char *name,char *callname,int argc));                            /* call a function by Unix calling sequence */
 void hashfree Args((void));                                                         /* Free all memory used by hash tables */
-static void halt_handler();                                                         /* handle halt signals */
-static void pipe_handler();                                                         /* handle broken pipe signals */
-static void error_handler();                                                        /* handle error signals */
-static void sigtrace();                                                             /* Go into trace mode, or exit */
 
 #undef Args
 

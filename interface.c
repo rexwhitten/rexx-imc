@@ -23,6 +23,11 @@
 #include<sys/termios.h>
 #endif
 
+static void halt_handler();                                                         /* handle halt signals */
+static void pipe_handler();                                                         /* handle broken pipe signals */
+static void error_handler();                                                        /* handle error signals */
+static void sigtrace();                                                             /* Go into trace mode, or exit */
+
 struct status{        /* Saved things from a previous incarnation of REXX */
       int stmt;
       char trcflag,timeflag,trcresult;
