@@ -387,9 +387,9 @@ int argc;
    char type=0;
    char *arg;
    long e1;
-   long e2;
+   int e2;
    int l;
-   long usec;
+   int usec;
 #ifdef DECLARE_TIMEZONE  /* everything except Sun seems to declare this */
    extern long int timezone;                               /* in time.h */
 #endif
