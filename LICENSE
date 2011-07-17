@@ -1,0 +1,34 @@
+Original copyright was copied from README file. It's non-standard license,
+some concerns about modyfing source code can be made. Still it's familiar to
+old BSD license [1] e.g. word "modify" is missing.
+
+
+  Copyright (c) 1992-2003, Ian Collier
+
+  REXX/imc is copyright, but free.  Permission is granted to use, copy and
+  redistribute its code, provided that the same permission is granted to all
+  recipients, and that due acknowledgement is given to the author.
+
+
+In long term Ian Collier should be reached to solve this issue, meanwhile
+keeping this in mind is advised.
+
+Newer work is commited under terms listed bellow (ISC license):
+
+
+  Copyright (c) 2011, Paul Onyschuk <blink@bojary.koba.pl>
+
+  Permission to use, copy, modify, and/or distribute this software for any
+  purpose with or without fee is hereby granted, provided that the above
+  copyright notice and this permission notice appear in all copies.
+
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+
+[1] http://en.wikipedia.org/wiki/BSD_licenses#Previous_license
