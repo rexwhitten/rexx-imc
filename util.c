@@ -145,12 +145,12 @@ int i;
 }
 
 /* An exit handling routine */
-int exitcall(main,sub,parm)
-long main;
+int exitcall(_main,sub,parm)
+long _main;
 long sub;
 PEXIT parm;
 {   /* very simple. */
-   long exrc=exitlist[main](main,sub,parm);
+   long exrc=exitlist[_main](_main,sub,parm);
    if(exrc==RXEXIT_RAISE_ERROR)die(Esys);
    return exrc;
 }
