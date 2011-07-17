@@ -295,9 +295,10 @@ PRXSTRING result;
       return 1;             /* no tokenised program.  May be fixed later... */
    if(instore && !(instore[0].strptr && instore[0].strlength))
       return 1;             /* no macros.  May possibly be fixed later... */
-   if(!name)
+   if(!name){
       if(instore)name="anonymous";
       else return 1;
+   }
    if(envname && strlen(envname)>maxenviron) return 1;
    if(calltype!=RXCOMMAND && calltype!=RXFUNCTION && calltype!=RXSUBROUTINE)
       return 1;

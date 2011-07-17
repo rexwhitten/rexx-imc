@@ -812,7 +812,7 @@ int argc;
       }
    }
    if(argc!=1)die(Ecall);
-   if(pool)                /* The pool name determines what we do here */
+   if(pool){                /* The pool name determines what we do here */
       if(!strcasecmp(pool,"ENVIRONMENT") || !strcmp(pool,"SYSTEM")){
          arg=delete(&len);
          if(len<1 || len>varnamelen-1)die(Ecall);
@@ -845,6 +845,7 @@ int argc;
       }
       /* here add more "else if"s */
       else if(strcasecmp(pool,"REXX"))die(Ecall);
+   }
    arg=rxgetname(&len,&t); /* Get the symbol name, then try to get its value */
    if (t>1) stack(arg,len); /* for constant symbol stack its name */
    else if(t&&(val=varget(arg,len,&l)))stack(val,l);
@@ -856,9 +857,10 @@ int argc;
       arg[0]|=l;
       len=oldlen;
    }
-   if(new)
+   if(new){
       if (t>1) die(Ecall); /* can't set a constant symbol */
       else varset(arg,len,new,newlen);
+   }
 }
 
 void rxdatatype(argc)
@@ -1014,15 +1016,17 @@ int argc;
    if(argc>2)die(Ecall);
    if(argc>1){
       arg=(unsigned char *)delete(&len);
-      if(len>=0)
+      if(len>=0){
          if(len!=1)die(Ecall);
          else c2=arg[0];
+      }
    }
    if(argc){
       arg=(unsigned char *)delete(&len);
-      if(len>=0)
+      if(len>=0){
          if(len!=1)die(Ecall);
          else c1=arg[0];
+      }
    }
    if(c1>c2)c2+=256;
    len=c2-c1+1;
@@ -1388,9 +1392,10 @@ int argc;
    if(argc>4||argc<2)die(Ecall);
    if(argc==4){
       arg=delete(&len);
-      if(len>=0)
+      if(len>=0){
          if(len!=1)die(Ecall);
          else pad=arg[0];
+      }
    }
    if(argc>2&&isnull())delete(&len1),argc=2;
    if(argc>2)if((strlen=getint(1))<0)die(Ecall);
@@ -1423,9 +1428,10 @@ int argc;
    char pad=' ';
    if(argc==3){
       arg=delete(&len);
-      if(len>=0)
+      if(len>=0){
          if(len!=1)die(Ecall);
          else pad=arg[0];
+      }
       argc--;
    }
    if(argc!=2)die(Ecall);
@@ -1455,9 +1461,10 @@ int argc;
    char pad=' ';
    if(argc==3){
       arg=delete(&len);
-      if(len>=0)
+      if(len>=0){
          if(len!=1)die(Ecall);
          else pad=arg[0];
+      }
       argc--;
    }
    if(argc!=2)die(Ecall);
@@ -1558,9 +1565,10 @@ int argc;
    int i;
    if(argc==3){
       s1=delete(&l1);
-      if(l1>=0)
+      if(l1>=0){
          if(l1!=1)die(Ecall);
          else pad=s1[0];
+      }
       argc--;
    }
    if(argc!=2)die(Ecall);
@@ -1642,9 +1650,10 @@ int argc;
    if(argc==5){
       argc--;
       new=delete(&nl);
-      if(nl>=0)
+      if(nl>=0){
          if(nl==1)pad=new[0];
          else die(Ecall);
+      }
    }
    if(argc==4){
       argc--;
@@ -1713,9 +1722,10 @@ int argc;
    if(argc==5){
       argc--;
       new=delete(&nl);
-      if(nl>=0)
+      if(nl>=0){
          if(nl==1)pad=new[0];
          else die(Ecall);
+      }
    }
    if(argc==4){
       argc--;
@@ -1767,9 +1777,10 @@ int argc;
    if(argc&&isnull())argc--,delete(&dummy);
    if(argc&&isnull())argc--,delete(&dummy);
    if(argc)argc--,max=getint(1);
-   if(argc)
+   if(argc){
       if(isnull())delete(&dummy);
       else min=getint(1);
+   }
    if(min>max||max-min>100000)die(Ecall);
    if(min==max)r=0;
    else max=max-min+1,
@@ -2570,9 +2581,10 @@ int argc;
    if(argc==3){
       argc--;
       stream=delete(&len);
-      if(len>0)
+      if(len>0){
          if(memchr(stream,0,len))die(Ecall);
          else stream[len]=0;
+      }
       if(len==0)die(Ecall);
       stream[len]=0;
    }

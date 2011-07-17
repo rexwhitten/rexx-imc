@@ -728,10 +728,10 @@ int delay;        /* Whether to delay any signals */
                chkend=0;           /* We will be already at start of a stmt */
                if(!z)break;                    /* true: continue with THEN  */
                skipstmt();                     /* false: skip THEN          */
-               if(prog[ppc].line[0]==ELSE)     /* if the next word is ELSE  */
+               if(prog[ppc].line[0]==ELSE){     /* if the next word is ELSE  */
                   if(++ppc==stmts)die(Eprogend);/* check for more statements*/
                   else break;                /* Do the stmt after the ELSE. */
-                                             /* Usually it would be skipped */
+               }                              /* Usually it would be skipped */
                break;                        
             case ELSE:chkend=0;    /* We will be already at start of a stmt */
                if(++ppc==stmts)die(Eprogend);/* check for more statements   */
@@ -986,12 +986,13 @@ int delay;        /* Whether to delay any signals */
                   i=gettrap(&lineptr,c==ON,&l); /* Get the trap name */
                   if(i==Isyntax||i==Inovalue)die(Etrap);
                   if(c==ON){
-                     if(!l)
+                     if(!l){
                         if(prog[ppc].num)l=-ppc;
                         else
                            sprintf(workptr,": \'%s\'",varnamebuf),
                            errordata=workptr,
                            die(Elabel);
+                     }
                      for(e=istart;e<=interplev;e++)
                         sgstack[e].bits   &=~(1<<i),
                         sgstack[e].bitson &=~(1<<i),
@@ -1035,12 +1036,13 @@ int delay;        /* Whether to delay any signals */
                if((c= *lineptr)==ON||c==OFF){   /* set or clear a trap */
                   i=gettrap(&lineptr,c==ON,&l); /* Get the trap name */
                   if(c==ON){
-                     if(!l)
+                     if(!l){
                         if(prog[ppc].num)l=-ppc; /* flag the stmt in error */
                         else
                            sprintf(workptr,": \'%s\'",varnamebuf),
                            errordata=workptr,
                            die(Elabel);        /* die if we are interpreted*/
+                     }
                      sgstack[istart].ppc[i]=l;
                      sgstack[istart].bitson |=(1<<i);
                      for(l=istart;l<=interplev;l++)
@@ -1105,9 +1107,10 @@ signal:        while(pstacklev&&((stype=unpstack())<11||stype>13))
                   if(!pstacklev||stype>10&&stype!=15) /* function call */
                      epstackptr=tmpchr,pstacklev=istart,
                      die(Eleave); /* so the required loop is not active */
-                  if(stype==8||stype==15) /* un-named DO loop */
+                  if(stype==8||stype==15){ /* un-named DO loop */
                      if(!reflen)break;    /* OK if no name found */
                      else {delpstack(),sllen++;continue;}
+                  }
                   /* otherwise the top stack entry is a DO with variable */
                   svar=pstackptr+epstackptr-4*four,
                   svar -= align(len= *(int *)svar); /* point to the name */
@@ -1154,9 +1157,10 @@ signal:        while(pstacklev&&((stype=unpstack())<11||stype>13))
                   if(!pstacklev||stype>10&&stype!=15)
                      epstackptr=tmpchr,pstacklev=istart,
                      die(Eleave);
-                  if(stype==8||stype==15)
+                  if(stype==8||stype==15){
                      if(!reflen)break;
                      else {delpstack(),sllen++;continue;}
+                  }
                   svar=pstackptr+epstackptr-4*four,
                   svar -= align(len= *(int *)svar);
                   if(!(reflen&&(len-1!=reflen||memcmp(varref,svar,reflen))))
