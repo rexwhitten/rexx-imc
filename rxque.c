@@ -11,6 +11,7 @@
 #include<sys/wait.h>
 #include<sys/socket.h>
 #include<sys/stat.h>
+#include<string.h>
 
 int io();                            /* function which does the work */
 void term();                         /* cleanup function */

@@ -10,6 +10,7 @@
 #include<sys/param.h>
 #include"const.h"
 #include"functions.h"
+#include<string.h>
 
 typedef struct _hashitem {  /* An item in the hash table of path names */
    struct _hashitem *next;  /* The next item in the bucket */

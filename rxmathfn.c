@@ -4,6 +4,7 @@
 #include<stdio.h>
 #include<math.h>
 #include<stdlib.h>
+#include<string.h>
 
 #if defined(Solaris) && !defined(__STDC__)
 #define const        /* Fix broken Solaris headers */
