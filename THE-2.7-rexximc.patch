@@ -1,0 +1,63 @@
+You will probably want to apply this patch to THE-2.7 if you compile it with
+REXX/imc.  Normally it registers its functions in lower case, which means
+that if you write incommand() it will not be found (unquoted function names
+are uppercased before they are searched for).  This makes THE register the
+functions in both upper and lower case.
+
+--- rexx.c.orig	Mon Dec 28 05:05:00 1998
++++ rexx.c	Wed Feb 10 16:46:36 1999
+@@ -111,6 +111,36 @@
+ #else
+ #endif
+ 
++#if !defined(USE_REXX6000)
++/***********************************************************************/
++/* This hack is by imc (sorry) - when registering external functions,  */
++/* register both the original name and the name in upper case, so as   */
++/* to satisfy case sensitive interpreters.                             */
++/***********************************************************************/
++static ULONG MyRexxRegisterFunctionExe
++#if defined(HAVE_PROTO)
++   (
++   RRFE_ARG0_TYPE Name,      /* Name of function to be registered        */
++   RRFE_ARG1_TYPE Entry)     /* Entry point of function to be registered */
++#else
++   (Name, Entry)
++   RRFE_ARG0_TYPE Name;      /* Name of function to be registered        */
++   RRFE_ARG1_TYPE Entry;     /* Entry point of function to be registered */
++#endif
++/***********************************************************************/
++{
++/*--------------------------- local data ------------------------------*/
++   static CHARTYPE newname[80];
++   ULONG rc;
++/*--------------------------- processing ------------------------------*/
++   rc=RexxRegisterFunctionExe(Name, Entry);
++   if (rc != RXFUNC_OK || strlen(Name)+1 > (sizeof newname)/(sizeof (CHARTYPE)))
++      return rc;
++   strcpy((DEFCHAR *)newname, (DEFCHAR *)Name);
++   make_upper(newname);
++   return RexxRegisterFunctionExe(newname, Entry);
++}
++#endif /* !defined(USE_REXX6000) */
+ /***********************************************************************/
+ RSH_RETURN_TYPE THE_Commands
+ #if defined(HAVE_PROTO)
+@@ -483,7 +513,7 @@
+                               (RRFE_ARG1_TYPE)THE_Function_Handler,
+                               NULL);
+ #else
+-    rc = RexxRegisterFunctionExe((RRFE_ARG0_TYPE)function_item[i].name,
++    rc = MyRexxRegisterFunctionExe((RRFE_ARG0_TYPE)function_item[i].name,
+                                  (RRFE_ARG1_TYPE)THE_Function_Handler);
+ #endif
+     if (rc != RXFUNC_OK)
+@@ -508,7 +538,7 @@
+                               (RRFE_ARG1_TYPE)THE_Function_Handler,
+                               NULL);
+ #else
+-       rc = RexxRegisterFunctionExe((RRFE_ARG0_TYPE)buf,
++       rc = MyRexxRegisterFunctionExe((RRFE_ARG0_TYPE)buf,
+                                  (RRFE_ARG1_TYPE)THE_Function_Handler);
+ #endif
+        if (rc != RXFUNC_OK)

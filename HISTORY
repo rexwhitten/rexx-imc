@@ -1,0 +1,380 @@
+alpha1.2 6 Aug 1992  - initial release
+
+alpha1.3 17 Sep 1992 - fixes the following problems:
+
+   * Installation instructions too brief and not clear enough
+   * Error incorrectly reported on the following code format:
+       select
+           when a
+ 	     then ...
+ 	  when b
+ 	     then ...
+       end
+   * Clause tracing did not strip leading tabs.   
+   * Special variable SIGL not set on calling an internal routine
+   * Second parameter of bitxxx() was required; should be optional
+   * pos, lastpos, wordpos gave error when the needle was empty
+   * sign('-0') = -1 (should be 0)
+   * sign() left extra value on calculator stack, causing surprises
+   * subword(" to be or not to be ",7) caused crash; similarly for
+     word and wordlength
+   * symbol() gave incorrect results;
+   * translate(x,"") mistook the empty string for an omitted argument
+   * wordindex(string,n) gave non-zero when string contained n-1 words
+   * x2d() did not recognise second parameter
+   * arg() gave "4", not "2" when arguments were: func(1,2,,)
+   * binary strings were too restricted (i.e. a multiple of 8 digits and
+     no spaces)
+   * "DO for=forever" interpreted FOREVER as reserved
+   * PROCEDURE EXPOSE used commas as separators instead of spaces
+   * date('U') gave wrong day number
+   * Leading and trailing spaces were allowed in hex constants
+   * Priorities of implicit concatenation, space operator and unary operators
+     were wrong
+   * random(n,n) returned error; should return n
+   * Memory fault occurred after 63 nested PROCEDURE instructions
+   * expression after PUSH and QUEUE was required
+   * "rxstack" sometimes exited before giving the stack a chance to catch up;
+     after that queued() would slowly rise up to its correct value.
+   
+beta1.4 13 May 1993 - fixes the following problems:
+
+   * Mathematical function name discrepancy between rxmathfn.c and rxfn.c
+     now fixed
+   * Intermittent "Routine not found" error when using external functions
+     now fixed
+   * Case of labels is now preserved in "trace l"
+   * "parse var a.b" gave "?.B" when a.b undefined, now gives "A.B"
+   * "parse var" now signals to NOVALUE when variable is undefined
+   * stem. is now different from stem.""
+   * "stem.=5; drop stem.5; say stem. stem.5" now says "5 STEM.5" (did say
+     "5 5")
+   * Control variable in a loop is interpreted on each pass, and END, LEAVE 
+     and ITERATE compare symbol names literally.
+   * INTERPRET changed to detect incomplete DO/SELECT blocks
+   * SELECT (and WHEN) changed to reject multiple statements in WHEN clauses
+   * "do name=expri ..." changed to assign "expr + 0" to "name" instead of
+     just "expr".
+   * UNTIL conditions are tested before incrementing the control variable
+   * WHILE/UNTIL checking "modernised" ;-)
+   * "procedure expose (varlist)" implemented
+   * Fixed uninitialised char* pointer in rxchars2() which made lines()
+     sometimes bomb out with segmentation fault
+   * Fixed "Unexpected THEN/ELSE" error report for instructions of form
+     "otherwise if (cond) then ..."
+   * Amended rxmathfn.exec to use single instructions in WHEN clauses
+   * Fixed multiplication to say "Arithmetic Overflow" instead of "Invalid
+     whole number" when overflow occurs
+   * Fixed stacknum() to report error on too-large exponents - it previously
+     stacked an erroneous value instead.
+   * Fixed sqrt() to work with argument zero
+   * Fixed EXIT instruction to record size of new calculator stack
+     (previous code occasionally caused hard-to-trace memory crashes)
+   * chars(file) calls stat to return the size of file when it is not open
+   * chars() now takes into account characters buffered by stdio
+   * NUMERIC settings saved across function calls
+   * "parse numeric" now works
+   * Changed the sqrt() function in rxmathfn.exec
+   * Fixed formatting to obey 2*DIGITS rule for small numbers
+   * Fixed format() to obey 2*expt rule, also to round the number on input
+   
+REXX/imc-beta-1.5 4.00 25 Jun 1993 has the following changes:
+
+   * Fixed two erroneous source lines which choke sensitive compilers
+   * Distinguished between AIX cc and AIX gcc in the Makefile
+   * made "do 3=i" an error instead of a counted loop
+   * made "a==4" an error instead of a command
+   * Message 15 last word changed from "constant" to "string"
+   * '414243'x(3) is now a function call (was abuttal)
+   * allowed tab characters in hex and binary strings
+   * implemented "drop (list)"
+   * Added STUFF_STACK preprocesor symbol
+   * Fixed traceback and related things so that, for instance, running
+     main.exec, where main, foo and bar are as follows:
+
+     main.exec                   foo.exec                          bar.exec
+   
+     /* call an OK program */    /* call an erroneous program */   /* error */
+     call foo                    say "Entered FOO"                 return a+b
+                                 say bar()
+                                 say "Leaving FOO"
+                                 return
+			       
+     produces the following output:
+
+     Entered FOO
+         2 +++  return a+b
+     Error 41 running /tmp/bar.exec, line 2: Bad arithmetic conversion
+         3 +++  say bar()
+     Error 50 running /tmp/foo.exec, line 3: Error in called routine
+         2 +++ call foo
+     Error 50 running /tmp/main.exec, line 2: Error in called routine
+
+     whereas only the first four lines would previously have been displayed.
+     Similarly, traceback is printed for an error in an external routine
+     even when the error is trapped in the calling program.
+
+   * Removed the RC messages from error reports such as the above, because
+     they were pointless.
+   * Changed the format of RC messages from "RC(n)" to "RC=n"
+   * Implemented the third parameter of justify()
+   * Corrected "parse version" to show a language level as second token
+     instead of the interpreter version.
+   * Corrected mtest() to keep the old value if realloc fails
+   * Rewrote the tokeniser and amended various parts of the interpreter to
+     use the new program format
+   * Implemented the "name" subkeyword of "signal on"
+   * implemented the "failure" and "notready" conditions
+   * Added command line option processing
+   * Added extra signal handlers to make the interpreter die more cleanly
+   * Implemented "call on"
+   * Implemented the "condition" builtin function
+   * Made "Unexpected '*/'" a separate (nonstandard) error message
+   * Trace instructions now ignored in program if interactive tracing is on
+   * Implemented "tracefile=" option
+   * Improved chars() and lines() for non-open files to get more information
+     and raise notready if appropriate.  Improved lines() for persistent
+     files to return the correct result (and not just 0 or 1).
+   * Deleted ioerr().  RC is no longer set when notready is raised.
+   * Fixed the return values of charout() [would sometimes return a null
+     string or an incorrect value of 1 if an error occurred].
+   * File I/O functions now give error when the file is an empty string.
+   * Implemented the stream() function with commands close, fdopen, fileno,
+     flush, ftell, open, pclose and popen.
+   * Changed rexxtest.exec to use the stream() function instead of all those
+     other ones.
+   * Changed REXXPATH to REXXIMC and implemented the search so that this
+     environment variable is no longer necessary.
+
+REXX/imc-beta-1.5a 4.00 5 Sep 1993 was released to patch the following:
+
+   * Corrected the AIX cc compile flags -O2 and -qchar=signed.
+   * Removed extraneous definition of bsearch.
+   * Renamed "free" label to satisfy SunOS cc compiler.
+   * Corrected an uninitialised variable reference which caused a crash on
+     certain function calls.
+   * Corrected "storage exhausted" error with startup on AIX.
+   * Corrected a bug which caused looping while reporting "Unmatched quote"
+     error in certain input files.
+   * Corrected an error which left the default filetype blank when the
+     source file was standard input or "-s string".
+   * Allowed "address ''" and "trace ''" to run without error.
+   * Disallowed "call on novalue" and "call on syntax".
+   * Added setrc option to aid compatibility with earlier versions.
+   * Added -v and -c commandline flags.
+
+REXX/imc-beta-1.6 4.00 29 Apr 1994:  This was released as version 1.59
+                                     at the REXX Symposium in Boston.
+
+   * Fixed bug with "a.=3" used when a.3 is exposed (but not a.)
+   * '\r' added to the list of space characters allowed in source code
+     (for DOS format files).
+   * Error for the expression "()" changed from "Invalid expression" to
+     "Unexpected )"
+   * "parse value with ..." allowed
+   * Novalue is no longer trapped in a command entered at interactive trace.
+     If for some reason a novalue error does occur during such a command,
+     the message says "No-value error on X" instead of "No-value errorX".
+   * "do while internal_function()" now works properly
+   * The exprw in "do i=1 while exprw" is now evaluated after i is incremented
+     (which matters if and only if it involves i).
+   * Extra comment terminators are ignored instead of being flagged as an
+     error.  This is because "a=3*/*comment*/4" is a legal instruction which
+     would have been flagged.
+   * The while in "do '1' while=x" is now tokenised.
+   * It is no longer an error to have an if...then (...else) instruction at
+     the end of the program.
+   * It is no longer an error to have a label name starting with a number or
+     dot.
+   * Labels are no longer allowed in INTERPRETed strings.
+   * Labels are clauses (makes tracing easier).
+   * b2x and b2d changed to accept binary strings with spaces in them.
+   * datatype(string,'X') now returns 0 if string contains leading or trailing
+     spaces.
+   * Bug fixed which prevented REXX from working when file 0 or 1 was closed
+     before invoking it.
+   * ADDRESS settings are now saved over function calls.
+   * "do until while=3" is now "invalid DO syntax" instead of "invalid
+     expression" and is an error on the first pass instead of the second.
+   * Rudimentary API implemented featuring:
+     RexxStart (no tokenised programs)
+     RexxVariablePool (except RXSHV_EXIT and RXSHV_PRIV)
+     RexxRegisterSubcomExe/RexxDeregisterSubcom/RexxQuerySubcom
+     RexxRegsiterExitExe/RexxDeregisterExit/RexxQueryExit (with exits
+        RXCMDHST, RXSIODTR, RXSIOSAY, RXSIOTRC, RXSIOTRD, RXINIEXT and
+        RXTEREXT)
+     RexxRegisterFunctionExe/RexxDeregisterFunction/RexxQueryFunction.
+   * Added error message 45 and made RETURN enforce it.
+   * The string returned by PARSE SOURCE is now constant within a program,
+     as described in TRL (it used to depend on the current function).
+   * Implemented searching of *.rxlib files.
+   * Functions are now hashed when found, for faster access next time.
+   * Rewrote which() to read directories instead of using access().
+   * Implemented "unix program called as a function".
+   * Changed the continuation trace prefix to "*,*".
+   * Changed the distributed Make file to include the release date.
+
+REXX/imc-beta-1.6a 4.00 18 May 1994:
+
+This was released as version 1.6 two weeks after the Symposium.  The main
+difference from 1.59 to 1.6 was a documentation update to include the new
+API and function interfaces.  The tutorial was also modified slightly.
+Release 1.6 also contained several minor fixes to the API and the following
+minor fixes:
+
+   * ''b is no longer an error.
+   * Justify (x,0) is no longer an error (always returns '').
+   * Fixed format(x,,n) when x is in exponential notation (the result did
+     not always have n digits after the decimal point).
+   * Allowed SYSTEM as a synonym for ENVIRONMENT in the value() call (for
+     compatibility with Regina).
+   * Changed value() not to apply REXX syntax to names in external pools.
+     Environment variables are now restricted to contain REXX symbol
+     characters except '.' and '$' and not to start with a digit, but
+     they are not uppercased.
+   * Fixed bug in value which made the returned string sometimes overwrite
+     the new value of the variable.
+   * Fixed bug with hashed function names.
+   * B2x and x2b rewritten (previously they could return strings with extra
+     leading zeros).
+   * Fixed INTERPRET so that a syntax error during tokenisation is still
+     caught by SIGNAL ON SYNTAX.
+   * Fixed charin/linein to raise notready if given a write-only stream.
+   * Fixed infinite loop error with INTERPRET "a=/*".
+
+REXX/imc-beta-1.6b 4.00 7 Aug 1994
+
+   * Fixed error where a file was left open after calling a function which
+     was a Unix program.
+   * Allowed "signal on syntax" to catch Emem and Esys errors.
+   * Fixed wordpos() to check that the match ends on a word boundary
+     (e.g. wordpos('foo','x foobar foo') is 3 and not 2).
+   * Fixed error where memcpy() was used with overlapping arguments
+   * Long echo instruction in Make changed to a <<"@EOF" redirection
+     (the long echo instruction apparently choked the Linux shell).
+   * Various twiddles for Linux, IRIX and HP-UX, including
+     - FSTAT_FOR_CHARS preprocessor symbol added
+     - RANLIB defined in makefile
+     - I/O functions no longer call ftell before testing for an I/O error
+     - twiddles to getwd, rand, srand, siginterrupt and vfork system calls
+     - dictionary in rxmathfn.c kludged for IRIX.
+
+REXX/imc-beta-1.6c 4.00 10 Aug 1995
+
+   * Fixed silly file I/O bugs caused by the Linux twiddles:
+     - "parse pull/linein" did not correctly detect I/O errors
+     - some I/O functions would not record the error properly so that if
+       "signal on notready" was executed without a "notready" label the
+       I/O error would not appear in the traceback.
+   * Protected RexxStart against a result parameter of NULL.
+   * Changed which() not to rely on the value of dir->d_name after the
+     directory has been closed.  Did a small number of other similar tweaks
+     to fix minor problems detected by Mark Hessling using "Purify".
+   * Ported to DEC Alpha.
+
+REXX/imc-beta-1.6d 4.00 1 Aug 1996
+
+   * Ported to Solaris 2.5 and FreeBSD 2.0.5.
+   * Completely rehashed the installation procedure.
+   * Fixed trace bug which causes compound symbol to have its first
+     character inverted and one which fails to prevent control characters
+     from being printed out when results are traced.
+   * Slightly redid the order of includes at the top of each source file.
+
+REXX/imc-beta-1.6d 4.00 9 Mar 1997
+
+   * Fixed some trivial compile errors on Linux and Solaris 2.5 cc.  Added
+     Solaris 2.5 cc to the Make file.
+
+REXX/imc-beta-1.7 4.00 8 Feb 1999
+
+   * Fixed intermittent segmentation fault bug in INTERPRET which only
+     shows up on little-endian machines.
+   * Fixed bug which sometimes causes INTERPRET "" to return from the
+     current routine.
+   * Fixed bug which sometimes causes weird effects when END is missing
+     (like the error being reported at line 1880 in a 5-line program).
+   * Made the interpreter report an error at the unmatched DO instruction
+     instead of at end of program, when END is missing.
+   * Fixed "Incomplete DO/SELECT/IF" reported inappropriately when END is
+     the last line of the program or when "do;return;end" is given to the
+     INTERPRET instruction.
+   * Fixed occasional crash in "parse arg" instruction when there were no
+     arguments.
+   * Y2K fixes for DATE builtin function.
+   * Removed illegal uses of errno symbol in structures (this caused
+     compilation errors on Red Hat 5 and certain other systems).
+   * Moved to getcwd and strerror instead of getwd and sys_errlist.
+   * Used fd_set variables in rxque instead of old integer pointers.
+   * Added time and date conversion, and 'O' option of TIME function.
+   * Protected RexxStart against null value of rc.
+   * Fixed crash when sending commands to the undefined environment.
+   * If RexxStart called with an envname of NULL the default environment
+     no longer starts with a dot.
+   * When end-of-file was detected, stream(file,'d') would return
+     "cannot assign requested address".
+   * Format(-0.3,,0) was '-0', now just '0'.
+   * Say '-9e999999999'<'9e999999999' was an error, now says '1'.
+   * Implemented "expose" option.
+   * Fixed bug where OPTIONS instruction sometimes failed to recognise options
+     on little-endian architectures.
+   * New STREAM commands:
+     open write append|replace; open both [append|replace]; transient;
+     persistent; query datetime|exists|handle|size|streamtype|timestamp.
+   * Bug fixed (again) which prevented Rexx from working when invoked with
+     descriptor 0 or 2 closed.
+   * Implemented "sigpipe" option.  Tightened error checking in stream I/O
+     to help detection of broken pipes.  Made "flush" stream command trigger
+     NOTREADY on error.
+   * Implemented "rxsaa:" token in .rxlib files.
+   * Implemented RexxRegisterFunctionDll and RxFuncAdd/Drop/Query.
+   * Made rexx search for filename without extension if filename.exec not
+     found. 
+   * Made which() function use access() if opendir fails (you can now put
+     Rexx programs in unreadable directories).
+   * Added #ifdef around the definition of filetype in const.h.
+   * Allowed "stderr" and "stdout" as filespecs in the "tracefile=" option.
+   * Allowed empty string as a valid stream for most functions.
+   * Introduced REXXEXT environment variable; changed default extension
+     to ".rexx".
+   * Added APIENTRY to rexxsaa.h file.
+   * Changed the default location of Rexx libraries from binary dir to
+     library dir.
+   * Wrote man pages for rexx, rxque, rxstack.
+
+REXX/imc-beta-1.7 4.00 31 Mar 1999 (bugfix release)
+
+   * Fixed time('O') for glibc and SysV systems.
+   * Fixed segmentation fault on: rexx -tr -s "parse arg x"
+   * Fixed compilation errors on FreeBSD.
+
+REXX/imc-beta-1.75 4.00 1 Jan 2000 (unofficial bugfix release)
+
+   * Fixed value length error in RexxVariablePool API function.
+   * Compiled on Red Hat 6 / glibc 2.1 (stderr not necessarily constant).
+   * Fixed memory corruption occuring rarely in DO loops.
+   * Fixed numeric comparison ('say 0 & -1<1' said -1 due to a spurious
+     stacked item when the signs differ - bug introduced in 8 Feb release).
+   * Fixed date('B',x) (returned wrong answer for x <= 31-Dec-1969).
+   * Fixed date(y,x,'B') (returned error for x < 719162).
+   * Doc fix: d2b and b2d are not standard functions.
+   * Fixed 'query exists' stream function (returned wrong result for
+     the file '/' or '/foo').
+   * Symbol fixes: value(x) did not allow x to be a number in exponential
+     format; value(x,y) did allow x to be a constant symbol; symbol(x) no
+     longer allows x to contain a leading sign or leading and trailing spaces;
+     datatype(x,'S') changed to test x against the syntax of a symbol
+     instead of just testing the individual characters of x.
+
+REXX/imc-beta-1.76 4.00 25 Feb 2002 (another unofficial bugfix release)
+
+   * set LD=gcc in the Make file for Linux (fixes bad crash with glibc>=2.1).
+   * clear workspace in main interpreter loop (fixes potential memory leak).
+   * fix off-by-1 memory allocation in signal condition (causes occasional
+     bad crashes).
+   * fix invalid array access in rare case of traceput called with
+     an empty string.
+   * fix rare PARSE VALUE bug which corrupts the expression being parsed.
+   * PARSE bug with arbitrary expressions in template documented.
+   * assignments during parse traced with >=> tag.
+   * sign() function documented.

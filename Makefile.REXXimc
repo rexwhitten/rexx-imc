@@ -1,0 +1,206 @@
+#Makefile for REXX/imc
+
+SO = librexx.so
+SONAME= $(SO).$(VER)
+
+DATE = -DDAY=$(RXDAY) -DMONTH=$(RXMONTH) -DYEAR=$(RXYEAR)
+
+REXX = $(BINDIR)/rexx rxque rxstack $(MATH)
+RXCFILES = $(SRC)/rexx.c $(SRC)/util.c $(SRC)/calc.c $(SRC)/rxfn.c $(SRC)/shell.c \
+           $(SRC)/interface.c $(SRC)/globals.c $(SRC)/main.c $(SRC)/rxmathfn.c
+CFILES = $(RXCFILES) $(SRC)/rxque.c $(SRC)/rxstack.c
+OFILES = rxfn.o calc.o util.o shell.o interface.o globals.o main.o rexx.o
+LIBFILES = rexx.o rxfn.o calc.o util.o shell.o interface.o globals.o
+HFILES = $(SRC)/const.h $(SRC)/globals.h $(SRC)/functions.h $(SRC)/rexxsaa.h
+JUNKFILES = *.o rexx rxque rxstack rxmathfn.rxfn librexx.* rexx.1
+FILEDEFS = -DREXXIMC=\"$(REXXIMC)\" -DREXXLIB=\"$(REXXLIBDIR)\"
+
+default:
+	@echo "REXX/imc make must be invoked via: Make [check|test|install]"
+
+all: $(REXX) rexx.1
+
+# Install does a final "build" because the use of dynamic libraries are best
+# linked within the module than thru LD_LIBRARY_PATH.  This avoids penalizing 
+# the entire system's performance...
+#
+# rxque and rxstack are not linked to the dynamic library so they can just
+# be copied.  The math functions are also copied.
+
+install: install-pgm install-fn install-man
+
+install-pgm: all
+	$(VERBOSE) "install-pgm:"
+	cp -p rxque rxstack $(BINDIR)
+
+install-fn: $(MATH)
+	$(VERBOSE) "install-fn:"
+	test -f rxmathfn.rxfn && cp -p rxmathfn.rxfn $(SRC)/rxmathfn.rxlib $(REXXLIBDIR) \
+	|| cp -p $(SRC)/rxmathfn.rexx $(SRC)/rxmathfn.rxlib $(REXXLIBDIR)
+
+install-man: rexx.1
+	$(VERBOSE) "install-man:"
+	cp -p rexx.1 $(SRC)/rxque.1 $(SRC)/rxstack.1 $(MANDIR)
+
+uninstall: uninstall-pgm uninstall-fn uninstall-man
+
+uninstall-pgm:
+	$(VERBOSE) "uninstall-pgm:"
+	rm -f $(LIBDIR)/librexx.* $(BINDIR)/rexx $(BINDIR)/rxque $(BINDIR)/rxstack 
+
+# uninstall removes the math lib from both old and new locations
+uninstall-fn:
+	$(VERBOSE) "uninstall-fn:"
+	rm -f $(BINDIR)/rxmathfn.rxfn $(BINDIR)/rxmathfn.exec $(BINDIR)/rxmathfn.rxlib \
+	$(REXXLIBDIR)/rxmathfn.rxfn $(REXXLIBDIR)/rxmathfn.rexx $(REXXLIBDIR)/rxmathfn.rxlib
+
+uninstall-man:
+	$(VERBOSE) "uninstall-man:"
+	rm -f $(MANDIR)/rexx.1 $(MANDIR)/rxque.1 $(MANDIR)/rxstack.1
+
+$(BINDIR)/rexx: main.o $(REXXLIB) $(SOLINK)
+	$(VERBOSE) "$(BINDIR)/rexx:"
+	$(LINK) $(OPTFLAG) $(LINKFLAG) $(DEBUG) $(USEDLLFLAG) -o $(BINDIR)/rexx main.o \
+	-L$(LIBDIR) $(LREXX) $(LIBRARIES) $(RUNLIBS)
+
+$(LIBDIR)/$(SONAME): $(LIBFILES)
+	$(VERBOSE) "$(LIBDIR)/$(SONAME):"
+	$(LD) -o $(LIBDIR)/$(SONAME) $(DLLFLAG) $(LIBFILES)
+
+$(LIBDIR)/$(SO): $(LIBDIR)/$(SONAME)
+	$(VERBOSE) "$(LIBDIR)/$(SO):"
+	rm -f $(LIBDIR)/$(SO)
+	ln -s $(SONAME) $(LIBDIR)/$(SO)
+
+$(LIBDIR)/librexx.a: $(LIBFILES)
+	$(VERBOSE) "$(LIBDIR)/librexx.a:"
+	ar rc $(LIBDIR)/librexx.a $(LIBFILES)
+	$(RANLIB) $(LIBDIR)/librexx.a
+
+rexx.1: $(SRC)/rexx.1.in
+	$(VERBOSE) "rexx.1:"
+	@if test -n "$(REXXLIBDIR)"; then text=": $(REXXLIBDIR)";\
+	else text=" whichever directory the \\\\fBrxque\\\\fR(1) utility is found in at run time";\
+	fi;set -x;sed -e "s|@REXXLIBDIR@|$$text|" $(SRC)/rexx.1.in > rexx.1
+
+#rexx: $(BINDIR)/rexx           # make knows this already, since BINDIR="."
+
+librexx.a: $(LIBDIR)/librexx.a  # make doesn't know this already, since LIBDIR=`pwd`
+
+librexx.so: $(LIBDIR)/$(SONAME) $(SOLINK)
+
+rxque: $(SRC)/rxque.c
+	$(VERBOSE) "rxque:"
+	$(CC) $(OPTFLAG) $(CCFLAG) -I$(SRC) -c $(SRC)/rxque.c
+	$(LINK) $(OPTFLAG) $(LINKFLAG) -o rxque rxque.o $(LIBRARIES)
+	@rm rxque.o
+
+rxstack: $(SRC)/rxstack.c
+	$(VERBOSE) "rxstack:"
+	$(CC) $(OPTFLAG) $(CCFLAG) -I$(SRC) -c $(SRC)/rxstack.c
+	$(LINK) $(OPTFLAG) $(LINKFLAG) -o rxstack rxstack.o $(LIBRARIES)
+	@rm rxstack.o
+
+# compile individual object files:
+
+rex: rexx.o
+
+rxfn: rxfn.o
+
+calc: calc.o
+
+util: util.o
+
+shell: shell.o
+
+api: interface.o
+
+main: main.o
+
+math: rxmathfn.rxfn
+
+# The junk files are all in the current directory.
+clean:
+	$(VERBOSE) "clean:"
+	rm -f $(JUNKFILES)
+
+lint: $(HFILES) $(CFILES)
+	$(VERBOSE) "lint:"
+	@echo lint $(RXCFILES)
+	@(lint $(DATE) $(FILEDEFS) -I$(SRC) $(RXCFILES);\
+	echo rxque.c:;\
+	echo lint rxque.c >&2;\
+	lint -I$(SRC) $(SRC)/rxque.c;\
+	echo rxstack.c:;\
+	echo lint rxstack.c >&2;\
+	lint -I$(SRC) $(SRC)/rxstack.c) | $(SRC)/lintfilter
+	@echo "Messages are in /tmp/lint"
+
+interface.o: $(SRC)/interface.c $(HFILES)
+	$(VERBOSE) "interface.o:"
+	$(CC) $(OPTFLAG) $(CCFLAG) -c $(PIC) $(DATE) $(FILEDEFS) -I$(SRC) $(SRC)/interface.c
+
+rxmathfn.rxfn: $(SRC)/rxmathfn.c $(SRC)/const.h $(SRC)/functions.h
+	$(VERBOSE) "rxmathfn.rxfn:"
+	$(CC) $(OPTFLAG) $(CCFLAG) -c $(PIC) -I$(SRC) $(SRC)/rxmathfn.c
+	$(LD) $(SOFLAG) -o rxmathfn.rxfn rxmathfn.o -lm
+	@rm rxmathfn.o
+
+# If the source is in the current directory, this rule can be used.
+.c.o: $(HFILES)
+	$(VERBOSE) ".c.o:"
+	$(CC) $(OPTFLAG) $(CCFLAG) -c $(PIC) $*.c
+
+# This rule works whether or not the source is in the current directory,
+# but some "make"s don't understand the '%' notation (hence the previous
+# rule).
+%.o:$(SRC)/%.c $(HFILES)
+	$(VERBOSE) ".c.o:"
+	$(CC) $(OPTFLAG) $(CCFLAG) -c $(PIC) -I$(SRC) $(SRC)/$*.c
+
+check:
+	@echo ""
+	@echo "********************* make var check ************************"
+	@echo ""
+	@echo These are the variables which make would have been invoked with:
+	@echo ""
+	@echo VER=$(VER)
+	@echo RXDAY=$(RXDAY)
+	@echo RXMONTH=$(RXMONTH)
+	@echo RXYEAR=$(RXYEAR)
+	@echo DATE=$(DATE)
+	@echo ""
+	@echo VERBOSE=$(VERBOSE)
+	@echo DEBUG=$(DEBUG)
+	@echo ""
+	@echo SRC=$(SRC)
+	@echo LIBDIR=$(LIBDIR)
+	@echo BINDIR=$(BINDIR)
+	@echo MANDIR=$(MANDIR)
+	@echo REXXIMC=$(REXXIMC)
+	@echo REXXLIBDIR=$(REXXLIBDIR)
+	@echo REXXLIB=$(REXXLIB)
+	@echo MATH=$(MATH)
+	@echo ""
+	@echo PATH=$(PATH)
+	@echo CC=$(CC)
+	@echo OPTFLAG=$(OPTFLAG)
+	@echo CCFLAG=$(CCFLAG)
+	@echo PIC=$(PIC)
+	@echo USEDLLFLAG=$(USEDLLFLAG)
+	@echo ""
+	@echo LINK="$(LINK)"
+	@echo LD=$(LD)
+	@echo LINKFLAG=$(LINKFLAG)
+	@echo DLLFLAG=$(DLLFLAG)
+	@echo SOFLAG=$(SOFLAG)
+	@echo SO=$(SO)
+	@echo SONAME=$(SONAME)
+	@echo SOLINK=$(SOLINK)
+	@echo RUNLIBS=$(RUNLIBS)
+	@echo LIBRARIES=$(LIBRARIES)
+	@echo LREXX=$(LREXX)
+	@echo RANLIB=$(RANLIB)
+	@echo ""
+	@echo "********************* make var check ************************"
+	@echo ""

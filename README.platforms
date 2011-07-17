@@ -1,0 +1,57 @@
+The current version of REXX/imc has been compiled and given at least a cursory
+check on the following platforms.
+
+ Hardware                  Operating System  Compiler                     Notes
+ Intel Pentium             Red Hat Linux 5.1 gcc 2.7.2.3
+ Intel Pentium II          Solaris 2.5       gcc 2.8.1, Sun Workshop cc 4.2
+ Sun SPARCstation 2        Solaris 2.5.1     gcc 2.8.1, Sun Workshop cc 4.2
+ Sun SPARC 10              SunOS 4.1.3       gcc 2.5.8, bundled cc          [2]
+ DEC Alpha                 Digital Unix 4.0  gcc 2.7.2.2, DEC cc V5.6-075
+ Silicon Graphics Indy     IRIX 6.2          gcc 2.8.1, Ragnarok cc 6.2
+ Silicon G Power Challenge IRIX64 6.2        gcc 2.8.1, Ragnarok cc 6.2     [3]
+ Silicon Graphics Octane   IRIX64 6.5        gcc 2.8.1, MIPSpro cc 7.2.1    [4]
+
+Third parties have reported successful compilation on the following platforms.
+
+ Hardware                  Operating System  Compiler
+ i386 architecture         FreeBSD 2.2.7     gcc
+
+Previous versions of REXX/imc have been compiled on the following
+platforms.  It is hoped that they still work, but some twiddling may
+be required especially since these are unlikely to be current operating
+system versions.
+
+ Hardware                  Operating System                               Notes
+ Intel i386                FreeBSD 2.0.5
+ IBM RS6000                AIX 3.2                                          [1]
+ HP (various numbers)      HP-UX 9.01                                       [1]
+
+Notes:
+
+[1] On these systems, the ability to use separately compiled function
+    packages is (currently) lacking.  A math function package written in
+    Rexx (supplied) may be used instead of the compiled one.
+[2] Using the system cc with optimisation on SunOS 4 seems to exhibit
+    a bug in the compiler which makes Rexx crash while interpreting the
+    "trace o" instruction (of which there is one in the rexxcps program).
+    Either: do not use optimisation flags; or: compile, delete rexx.o
+    and recompile with COMPILEFLAG=-O0 (that's capital-oh zero).
+[3] Using the system cc with optimisation, a strange bug manifests itself
+    in which compound symbols do not work correctly.  Either: change the
+    optimisation flags to -O1; or: compile, delete util.o and recompile with
+    COMPILEFLAG=-O1.
+[4] With gcc 2.8.1 a conflict between a gcc header and a system header
+    prevented the math function library from compiling.  This may be a
+    misconfiguration.  It was solved by inserting the following lines
+    between "#include<math.h>" and "#include<stdlib.h>" in rxmathfn.c:
+    #define initstate initstate1
+    #define setstate  setstate1
+    #define srandom   srandom1
+
+The AIX 3.2 port was by Ignacio Reguero <reguero@sunsoft.cern.ch> (for
+gcc) and later modified by Yossie Silverman <yossie@ucsfvm.ucsf.edu>
+(for cc).  The Make file entry for HP-UX was supplied by Mark Hessling
+<M.Hessling@qut.edu.au>.  The Solaris port was with the help of Pierre Fortin
+<pfortin@cisco.com>.  The FreeBSD port was done with the aid of an account
+supplied by Scott Mann <smann@TheMall.Net>.
+

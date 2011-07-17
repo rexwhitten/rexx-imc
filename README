@@ -1,0 +1,22 @@
+This is the meta-documentation for the REXX/imc distribution.
+
+The distribution contains the following README files:
+
+  README.news         What's new in this version
+  README.platforms    A list of platforms on which REXX/imc has been tested
+  README.make         How to make REXX/imc
+  README.files        Descriptions of the files (other than those mentioned
+                      here) included in the distribution
+  README.docs         Descriptions of the documentation files
+  README.Y2K          Statement of year 2000 compatibility
+  README.bugreport    What to do if you discover a bug in REXX/imc
+
+The file README.versions, containing descriptions of changes made since the
+first release, has been renamed to HISTORY.
+
+Compiled binaries may be available in a separate distribution file whose
+filename starts with the target machine name.
+
+REXX/imc is copyright, but free.  Permission is granted to use, copy and
+redistribute its code, provided that the same permission is granted to all
+recipients, and that due acknowledgement is given to the author.

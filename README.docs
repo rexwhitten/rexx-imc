@@ -1,0 +1,16 @@
+
+The documentation files supplied with REXX/imc are the following:
+
+rexx.info:     An attempt at a Rexx tutorial (implementation independent,
+               whenever possible).
+
+rexx.ref:      The complete reference of REXX/imc showing in detail the
+               invocation, the format of expressions, the instructions,
+               the builtin functions, the error messages, and how to use
+               the data stack.
+
+rexx.summary:  A summary of REXX/imc's expressions, instructions and builtin
+               functions, plus a summary of differences from standard Rexx.
+
+rexx.tech:     Information for "system programmers" to write applications
+               for and maintain REXX/imc.

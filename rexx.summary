@@ -1,0 +1,303 @@
+
+The REXX Summary
+
+Summary of the summary
+
+ * Section 1: Differences from TRL [1]
+ * Section 2: Summary of expression syntax
+ * Section 3: Summary of instructions
+ * Section 4: Summary of builtin functions
+
+[1] The Rexx Language, a practical approach to programming
+    M. F. Cowlishaw
+    Englewood Cliffs 1985
+
+1 Differences from TRL
+
+The following are all nonstandard features of REXX-imc
+
+ * Rejection of labels ending with dot (in case of confusion between
+   function.(args) and stem.(tail))
+ * Compound variable accesses of the form "stem.'string constant'" and
+   stem.(expression)
+ * Acceptance of any non-zero number for logical truth, rather than just 1
+ * "SAYN expression" to output lines without carriage return
+ * "SELECT expression" to switch on a value
+ * "END SELECT"
+ * "PARSE VALUE" with multiple strings separated by commas
+ * "PROCEDURE HIDE"
+ * The following functions: b2d d2b chdir getcwd getenv putenv system userid
+   rxfuncadd rxfuncdrop rxfuncquery
+   plus these I/O functions: open close fdopen popen pclose fileno ftell
+ * error messages 80-210, -1 and -3.
+
+2 Summary of expression syntax
+
+Strings:          "String constants" 'enclosed in quotes'
+Hex strings:      '616263 64'x
+Numbers:          123.4e-56
+Constant symbols: .abc 1d4 7!
+Simple symbols:   foo bar xyz3
+Stems:            array.
+Compound symbols: c.3 element.bar.45
+Operators:        arithmetic: + - * / ** (to-power) % (div) // (mod)
+                  string:     [abuttal] [space] || (concatenation)
+                  logical:    \ (not) & (and) | (or) && (xor)
+                  comparison: = > < <> <= >= \> \< \=
+                              == >> << <<= >>= \>> \<< \== (strong comparison)
+Function calls:   fn(1,2,3)    bar(,5)  'DATE'()
+
+3 Summary of instructions
+
+/* this is a comment */
+
+expression                     - execute a host command
+
+symbol=value                   - assignment
+
+ADDRESS [VALUE] [environment]  - change the current environment
+ADDRESS environment command    - execute a command in an environment
+
+CALL name [arg][,[arg],...]]   - call a function or subroutine
+CALL ON condition [NAME symbol]- turn on condition handling
+CALL OFF condition             - turn off condition handling
+
+    condition = ERROR | FAILURE | NOTREADY | HALT
+
+DO [ symbol=start   [TO  finish]  ]     [WHILE expression_w]
+   [                [BY  step  ]  ]
+   [                [FOR count ]  ]     [UNTIL expression_u]
+
+   [ expression_c                 ]     [FOREVER           ]
+
+                               - block or repetitive block instruction
+
+DROP symbol [symbol...]        - de-assignment
+
+END [symbol]                   - end block or repetitive block instruction
+
+EXIT [expression]              - exit program or external function
+
+IF expression [;] THEN [;] statement [ ; ELSE [;] statement]
+                               - conditional instruction
+
+INTERPRET expression           - dynamically execute a string
+
+ITERATE [symbol]               - continue repetitive block
+
+LEAVE [symbol]                 - leave repetitive block
+
+NOP                            - do nothing
+
+NUMERIC DIGITS n               - set parameters for numeric formatting
+NUMERIC FUZZ n
+NUMERIC FORM   SCIENTIFIC
+             | ENGINEERING
+             | "string constant"
+             | [VALUE] expression
+
+OPTIONS expression             - Control system-dependent things
+
+[PARSE [UPPER]] ARG template   
+[PARSE [UPPER]] PULL [template]
+PARSE [UPPER] LINEIN [template]
+PARSE [UPPER] SOURCE template
+PARSE [UPPER] VERSION template
+PARSE [UPPER] NUMERIC template
+PARSE [UPPER] VAR symbol template
+PARSE [UPPER] VALUE expression WITH template
+
+    template        -> [firstPosition] assignments [assignments]
+    assignments     -> [nextPosition] varlist [stopPosition]
+    varlist         -> varname ' ' [varlist]
+    varname         ->   "non-constant symbol"
+                       | '.'
+    firstPosition   -> position
+    nextPosition    -> position [nextPosition]
+    stopPosition    -> position
+    position        ->   searchPosition
+                       | absPosition
+                       | relPosition
+                       | '(' "expression" ')'
+    searchPosition  -> "string constant"
+    absPosition     ->   "integer"
+                       | '=' numexpr
+    relPosition     ->   '+' numexpr
+                       | '-' numexpr
+    numexpr         ->   "integer"
+                       | '(' "integer expression" ')'
+
+PROCEDURE                      - hide the caller's symbols
+PROCEDURE EXPOSE var1 [var2...]
+PROCEDURE HIDE var1 [var2...]
+
+PUSH  expression               - stack a value in LIFO order
+QUEUE expression               - stack a value in FIFO order
+
+RETURN [value]                 - return from a function or subroutine
+
+SAY [expression]               - echo data
+SAYN expression                - echo data without newline
+
+SELECT [expression]
+   WHEN expression THEN statements
+   WHEN expression THEN statements
+   ...
+   [OTHERWISE statements]
+END [SELECT]                   - switch on a list of conditions
+
+SIGNAL [VALUE] name            - jump to a label
+SIGNAL ON condition [NAME symbol] - turn on condition handling
+SIGNAL OFF condition              - turn off condition handling
+
+    condition = ERROR | FAILURE | NOTREADY | HALT | SYNTAX | NOVALUE
+
+TRACE [symbol]                 - control program tracing. Values are:
+TRACE "string"                   A (all clauses) C (commands) E (error)
+TRACE VALUE expression           F (failure) I (intermediate values)
+                                 L (labels) N (normal, =F) O (off) 
+                                 R (results)
+
+
+4 Summary of builtin functions
+
+Standard functions
+
+ABBREV(information,info[,length])  - check for valid abbreviations
+ABS(number)                        - return the absolute value
+ADDRESS()                          - return the current environment
+ARG([n][,opt])                     - return or test an argument
+BITAND(string1,string2[,pad])
+BITOR (string1,string2[,pad])      - combine two strings with bit operations
+BITXOR(string1,string2[,pad])
+B2D(binary)
+B2X(binary)
+D2B(decimal)
+C2X(string)
+C2D(string[,n])
+D2C(decimal[,n])                   - convert between data formats
+D2X(decimal[,n])
+X2B(hex)
+X2C(hex)
+X2D(hex)
+CENTER(s,n[,pad])                  - centre a string in a field
+CENTRE(s,n[,pad])
+COMPARE(s1,s2[,pad])               - compare two strings
+CONDITION([option])                - return information about trapped condition
+                                     Option can be (default I):
+                                   C (condition name) D (description)
+                                   I (instruction)    S (status)
+                                   
+COPIES(s,n)                        - replicate a string
+DATATYPE(string[,type])            - test datatype. Type can be:
+                                   A (alphanumeric) B (bits) L (lowercase)
+                                   M (mixed case) N (number) S (symbol chars)
+                                   U (upper case) W (whole number) X (hex)
+
+DATE([format])                     - get date. Format can be:
+                                   B (base date - days since 1/1/1 AD)
+                                   C (days in century) D (days in year)
+                                   E (European) J (Julian) M (month name)
+                                   N (normal: dd Mon yyyy) O (ordered)
+                                   S (sorted) U (USA) W (day of week)
+DATE([format],date[,format])       - translate the given date from the latter
+                                     format to the former
+                                   
+DELSTR(string,n[,length])          - delete substring
+DELWORD(string,n[,length])         - delete words
+DIGITS()                           - NUMERIC DIGITS setting
+ERRORTEXT(i)                       - Rexx error message
+FORM()                             - NUMERIC FORM setting
+
+FORMAT(number [,[before] [,[after] [,[expp] [,expt]]]] )
+                                   - format a number as specified
+FUZZ()                             - NUMERIC FUZZ setting
+INSERT(new,target[,[n][,[length][,pad]]])  - insert new string into target
+JUSTIFY(s,n[,pad])                 - justify text to given width
+LASTPOS(needle,haystack[,start])   - find last occurrence of a string
+LEFT(string,num[,pad])             - return an initial substring
+LENGTH(string)                     - find the length of a string
+LINESIZE()                         - find the terminal width
+MAX(number[,number...])            - find the maximum of a set
+MIN(number[,number...])            - find the minimum of a set
+OVERLAY(new,target[,[n][,[length][,pad]]])  - overlay new string on to target
+POS(needle,haystack[,start])       - find the first occurance of a string
+QUEUED()                           - return the number of items on the stack
+RANDOM([min][,[max][,seed]])       - return a random number
+REVERSE(string)                    - find the reverse of a string
+RIGHT(string,num[,pad])            - return a final substring
+RXFUNCADD(rexxname,module,sysname) - load an external function
+RXFUNCDROP(function)               - drop an external function
+RXFUNCQUERY(function)              - query whether a function is loaded
+SIGN(num)                          - return the sign of the number
+SOURCELINE([i])                    - return a line of the source program
+SPACE(s[,[n][,pad]])               - evenly space words in a sentence
+STRIP(string[,[opt][,char]])       - remove leading/trailing spaces
+SUBSTR(string,n[,length[,pad]])    - return a substring
+SUBWORD(string,n[,k])              - return a substring of words
+SYMBOL(name)                       - test to see if a symbol is defined
+TIME([format])                     - get the time. Format can be:
+                                   C (civil time) N (normal) L (long)
+                                   H (hours since midnight)
+                                   M (minutes since midnight)
+                                   S (seconds since midnight) 
+                                   O (offset from GMT) E (elapsed time)
+                                   R (elapsed time then reset)
+TIME([format],time[,format])       - translate time from the latter format
+                                     to the former.
+                                   
+TRACE([setting])                   - get and/or set trace mode (see trace
+                                     instruction)
+                                     
+TRANSLATE(string[,[tableo][,[tablei][,pad]]])
+                                   - translate characters using given tables
+TRUNC(number[,n])                  - truncate floating point number
+VALUE(s[,[newvalue][,selector]])   - get or set value of a symbol
+
+VERIFY(string,reference[,[option][,start]])
+                                   - verify string for valid characters
+WORD(string,n)                     - return a word from a string
+WORDINDEX(string,n)                - return the position of a word in a string
+WORDLENGTH(string,n)               - return the length of a word in a string
+WORDPOS(phrase,string[,start])     - find a phrase in a string 
+WORDS(string)                      - return the number of words in a string
+XRANGE([a[,b]])                    - return a range of characters
+
+I/O functions (some of which are UNIX-specific)
+
+CHARIN([stream] [,[position] [,count]])  - read characters
+CHAROUT([stream] [,[string] [,position] ]- write characters
+CHARS([stream])                          - number of characters available
+CLOSE(stream)                            - close a stream
+FDOPEN(fd [,[mode] [,stream]])           - open an fd number
+FILENO(stream)                           - find an fd number
+FTELL(stream)                            - return the current file pointer
+LINEIN([stream] [,[line] [,count]])      - read a line
+LINEOUT([stream] [,[string] [,line]])    - write a line
+LINES([stream])                          - determine whether lines may be read
+OPEN(file [,[mode] [,stream]])           - open a file
+PCLOSE(stream)                           - close a pipe
+POPEN(command [,[mode] [,stream]])       - open a pipe to a shell command
+STREAM(stream [,[option] [,command]])    - miscellaneous stream operations
+
+UNIX-specific functions
+
+CHDIR(directory)                   - change to new directory
+GETCWD()                           - return current working directory
+GETENV(name)                       - get an environment variable
+PUTENV(string)                     - set an environment variable
+SYSTEM(s)                          - return the output of a shell command
+USERID()                           - return the process owner's login name
+
+Mathematical functions (implemented as separate package)
+
+ACOS(x)      the arc-cosine of x in radians (0<=acs(x)<=pi)
+ASIN(x)      the arc-sine of x in radians (-pi/2<=asn(x)<=pi/2)
+ATAN(x)      the arc-tangent of x in radians (-pi/2<=atn(x)<=pi/2)
+COS(x)       the cosine of x radians
+EXP(x)       the exponential of x (2.718281... to the power x)
+LN(x)        the natural logarithm of x (x>0)
+SIN(x)       the sine of x radians
+SQRT(x)      the square root of x (x>=0) [arbitrary precision possible]
+TAN(x)       the tangent of x radians (x <> pi/2)
+TOPOWER(x,y) x to the power y

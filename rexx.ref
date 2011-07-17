@@ -1,0 +1,3809 @@
+The REXX/imc Interpreter
+
+This is a reference for the various language features supported by the
+REXX/imc interpreter.  An introduction, summary and technical reference
+may be found in rexx.info, rexx.summary and rexx.tech, respectively.
+_________________________________________________________________________
+
+Invocation:   rexx [flags] filename args
+
+where "filename" is the name of the REXX program you wish to execute,
+and "flags" are some optional commandline parameters, described later.
+
+Notes:
+
+1. If the basename of "filename" does not contain a dot, then an
+   interpreter-supplied extension (usually ".rexx") will be appended, and
+   will become the "default extension".  If the file is not found with
+   this extension then it will be searched without the extension.  If the
+   basename of "filename" contains a dot and some following characters
+   then these characters will become the default extension (the default
+   extension is used when calling external functions).
+
+   The interpreter-supplied extension may be changed at compile time
+   (see the compilation instructions) or at run time by setting the
+   environment variable REXXEXT.  For example: setenv REXXEXT ".exec".
+
+2. The argument string may be any sequence of characters, including
+   spaces, but not including NULs (\0). Bear in mind that quotes and/or
+   escape characters may be necessary, because the shell interprets
+   some characters as special and removes multiple spaces.
+
+3. The REXX program is assumed to be a text file whose lines are
+   separated by newline characters: thus newline characters may not
+   appear in the middle of a line.  All other characters are allowed
+   (but many characters are rejected unless they form part of a string
+   constant or comment). 
+
+4. If the given filename does not include a path specification, then
+   the interpreter will search through the directories listed in the
+   REXXPATH environment variable - or, if that is not defined, the
+   PATH environment variable - before looking in the current directory.
+   The current directory (.) may be placed in REXXPATH to change this
+   searching order.
+
+Thus "rexx -ta test hello there" will call the program "test.rexx" with
+argument "hello there" and flag "-ta".
+
+The flags which are allowed all start with a "-" and are case-
+insensitive.  They are:
+
+  -option    where "option" is any option recognised by the OPTIONS
+             instruction (see below), for example: -tracefile=test1
+             (note that the file name in this option is case-sensitive
+             as usual).
+
+  -v         The interpreter will print out the version string (as used
+             by "parse version").  The command "rexx -v" by itself will
+             terminate after printing the version string, but all other
+             forms will continue as if the -v option were not present
+             after printing the version string.
+
+  -s string  The interpreter will execute the contents of "string" as
+  -c string  though it were a program.  The string may contain newline
+             characters, which will be recognised as line terminators
+             (in contrast to the string which appears in an INTERPRET
+             instruction).  Note that if the string contains any shell
+             metacharacters (including spaces) then it must be quoted to
+             prevent the shell from interpreting it or splitting it up.
+             The flags -s and -c are equivalent.  The latter is provided
+             for consistency with shell parameters.
+
+  -t setting The interpreter will execute "TRACE setting" before
+             interpreting the program.  The space before the setting
+             may be omitted, for example: -t?i.  Note that the setting
+             may need to be quoted, because "?" is a shell metacharacter.
+
+  -i         This equals "-t?a -s 'do forever;nop;end'".  The interpreter
+             will enter interactive mode for you to type Rexx
+             instructions.
+
+  -x         This option is used for files with the execute bit set on:
+             it prevents a ".rexx" from being appended to the filename,
+             and it causes the first line of the file to be ignored
+             (see below).  In REXX/imc >= 1.7 this option is no longer
+             needed (since the interpreter will find the file without the
+             extension) unless "filename.rexx" is also in the REXXPATH or
+             the first line of the program is invalid in Rexx.
+
+Except in the case that -i or -s is present, if a filename is omitted
+or "-" is specified as the filename then REXX/imc reads a program from
+the standard input.
+
+The option "-x" and the filename "-" terminate the commandline flags.
+The following parameter is assumed to be a filename (except when -i, -s
+or - have been specified) followed by the Rexx program parameters.  To
+execute a program called "-", say "rexx -x -".
+
+REXX/imc allows you to write a program starting with the line:
+
+#!/path/rexx [-x]
+
+(where /path/rexx is the absolute path name of the interpreter) at the
+top of the file so that the program can be made executable by the system.
+REXX/imc will ignore the first line if it starts with "#!"  or if the
+-x option is supplied.  The line will still be there, however, so line
+numbers in error reports will be correct (the `sourceline' function will
+also recognise the existence of this line).
+
+Using the -x parameter to make REXX/imc ignore the first line allows
+a further trick: in order to write a rexx program which is able to be
+executed without knowing the exact path name to the interpreter, the
+first line of the program should not be as above, but as follows:
+
+exec rexx -x "$0" "$*"
+
+as long as "rexx" can be found in a directory which is on the current
+path.  Instead of that, however, it is now more desireable to use the
+following line which is both a valid Rexx comment and a valid Unix
+command to start the interpreter.
+
+/*bin/true; exec rexx "$0" "$@" # REXX program */
+
+The Rexx interpreter needs access to the program "rxque".  It will search
+for this file in the following directories (in order):
+
+ - that named by REXXIMC, if this environment variable is set.  If it
+   is not set, then a default which was chosen at compile time is used
+   instead.
+ - the path name used when invoking Rexx, if any.  That is, if you type
+   "/foo/rexx myexec", then /foo will be searched.  If you type
+   "rexx myexec", then this step will be skipped.
+ - the directories named in the environment variable PATH
+ - the current directory.
+
+It should not be necessary to set REXXIMC, but under certain
+circumstances it may speed up the initialisation time to do so.
+
+Environment Variables
+
+As described above, REXXPATH is used to search for any program which is
+called as a command, or PATH is used if that is not set.
+
+REXXLIB is used to search for function libraries (see the technical
+reference for details about function libraries).  If that variable
+is not defined then REXX/imc looks in a path which was chosen at
+compile time.
+
+REXXFUNC is used to search for functions and subroutines which are not
+found in any library (whether they are in Rexx or another language).  If
+that variable is not defined, then REXX/imc looks in the same place as
+for programs which are called as commands.
+
+As described above, REXXIMC is used to search for the "rxque" program.
+
+Each of REXXLIB, REXXFUNC, REXXPATH and PATH may be a colon-separated
+list of directories, but REXXIMC must be a single directory name.
+_________________________________________________________________________
+
+The REXX Language, as interpreted by this implementation
+
+
+NOTE:  There will occasionally be comments headed by `NOTE', `BUG' or
+       `LOCAL'. The notes following these will usually be in the
+       following categories:
+    NOTE - (semi-)important information, pointing out traps or
+           differences with other implementations.
+    BUG  - a feature of the program (not always a particularly bad one,
+           though never beneficial) which may not get fixed.
+    LOCAL- a feature of the interpreter which I have deliberately (or
+           accidentally) added and is not `real' REXX
+
+NOTE:  Just because any particular description does not contain a note
+       headed by `LOCAL', that does not necessarily mean that the
+       relevant function behaves exactly according to the REXX
+       specification. It does mean, however, that I would like to know
+       of such instances where there is a difference, so that I can
+       either change the program or add a note to describe the
+       behaviour.
+
+The use of non-implemented REXX constructs will produce either error 82
+(Syntax error) or error 81 (Un-implemented function).  I hope that there
+is none of these, except that error 81 may occur when a .rxfn function
+file is found on a system which does not support dynamic libraries.
+_________________________________________________________________________
+
+Summary:
+
+Expressions
+Function or subroutine invocation
+Built-in functions
+Instructions:
+   NOP
+   SAY, SAYN (local)
+   Assignment
+   DROP
+   NUMERIC
+   EXIT
+   DO
+   LEAVE
+   ITERATE
+   IF
+   SELECT
+   PARSE
+   QUEUE, PUSH
+   CALL (and function calls)
+   RETURN
+   PROCEDURE
+   INTERPRET
+   SIGNAL
+   SIGNAL ON
+   TRACE
+   OPTIONS
+   ADDRESS
+Commands to the environment
+The REXX I/O model
+The stack
+Error messages
+_________________________________________________________________________
+
+Expressions
+
+Every expression evaluates to a string. There are no numeric expressions,
+but arithmetic may be performed on those strings which happen to
+represent numbers in decimal. From here on, references to "numbers" or
+"numeric" values will mean strings of the following format:
+   [+|-] [nnnnn][.][nnnn] [E [+|-] nnn]
+That is, an optional sign followed by a string of digits, possibly
+including a decimal point, followed by an optional exponent. The exponent
+consists of a letter `E' (or `e'), an optional sign, and a sequence of
+digits. No spaces are allowed within a number, but trailing or leading
+spaces are allowed, and spaces may occur between the leading sign and the
+first digit. There is no number which contains no digits before the
+exponent (if any), and "." is not a number.
+
+Whenever REXX constructs a number (such as the result of an arithmetic
+operation), it is formatted according to the following rules:
+
+   - a zero result is always expressed as the single digit "0".
+   - it is rounded up or down if necessary, so that the specified number
+     of significant figures is not exceeded. The number of significant
+     figures is usually 9, but can be changed with the NUMERIC DIGITS
+     instruction.
+   - If the number is negative, it is preceded by a minus sign, otherwise
+     there is no sign. A number never contains spaces.
+   - If the magnitude of the number is less than 1 (and if exponential
+     notation is not used) then a single zero digit precedes the
+     decimal point.
+   - An exponential form of the number - e.g. 1.234E+65 - will be used
+     if the number of digits otherwise required before or after the
+     decimal point exceeds NUMERIC DIGITS or twice that value,
+     respectively.
+   - If NUMERIC FORM SCIENTIFIC is in effect (the default) and the
+     number is expressed in exponential form, then the mantissa has
+     precisely one digit before the decimal point (if any), which is
+     non-zero. The exponent consists of the letter E followed by a plus
+     or minus sign, and then the exponent (with no spaces or leading
+     zeros).
+   - If NUMERIC FORM ENGINEERING is in effect and the number is
+     expressed in exponential form then the exponent is a multiple of
+     three. Up to three digits appear before the decimal point in the
+     mantissa, but otherwise the form is similar to the `scientific'
+     form described above.
+
+See the NUMERIC command for some more information.
+
+An expression consists of one or more constants or variables which
+may be combined with the use of operators and functions, as described
+below. Spaces are allowed within expressions, as long as they do not
+split up variable names or other integral items.
+
+String Constants: These are enclosed in quotes. Either single or double
+             quotes may be used, but the terminating quote must be the
+             same as the initial quote. A string may contain any
+             characters, but to enclose a quote of the same
+             kind as the delimeters, the quote is typed twice.
+             A string containing no characters is a null string.
+             Example:
+                 "that's right"          has value   that's right
+                 '"I''m here," I said.'  has value   "I'm here," I said.
+                 ""                      is the null string.
+
+Hex Constants:    A hex constant contains a sequence of hex digits
+             grouped in pairs. The first group may have just one digit,
+             in which case a `0' is added to the left. The groups are
+             optionally separated by spaces. Each group (pair) of hex
+             digits is translated into the character it represents in
+             ASCII. The list is enclosed in quotes and immediately
+             after the terminating quote is an `X' (or `x'). The `X'
+             must not form part of a longer word.
+             Example:
+                 "41 4243   44 "x        has value   ABCD
+
+Binary Constants: A binary constant is like a hex constant, but has `B'
+             instead of `X' and contains binary digits ("0" or "1").
+             The digits are arranged in nybbles - that is, groups of 4,
+             which may optionally be separated by spaces.  The first
+             nybble may have less than 4 digits, in which case it is
+             extended on the left with zeros.  If an odd number of
+             nybbles is present, a zero nybble is added on the left.
+             Each pair of nybbles is then translated into an ASCII
+             character.  Example:
+                 '10 0011 00100001'b     has value   CA
+
+             NOTE: the sequence of binary or hex digits must not contain
+                   leading or trailing blanks.
+
+Symbols:          A symbol contains any number of letters, numbers,
+             dots and the characters @#$!?_ and is always translated
+             to upper case before use.  A constant symbol is one which
+             starts with a number or a dot, and when it is found in an
+             expression, the characters of the symbol itself are used.
+             In addition, a single plus or minus sign is allowed in a
+             constant symbol if it is part of (the exponent of) a number
+             as defined above.
+                  Any non-constant symbol may be assigned a value by the
+             statement
+                       symbol = expression
+                  A simple symbol is one which does not contain any dots
+             and does not start with a digit. When it is used in an
+             expression it names a variable, and if it has been assigned
+             a value then that value is used, otherwise the symbol itself
+             is used (after translating to upper case).
+                  A stem is a symbol which ends with a dot, but does not
+             contain any other dots and does not start with a digit or
+             dot.  It can be used in an expression or assigned to (see
+             below).
+                  A compound symbol is a symbol which consists of a stem
+             followed by a tail. The tail consists of a non-empty
+             sequence of `qualifiers' separated by dots. Each qualifier
+             is ordinarily a simple symbol, a constant symbol, or null
+             (that is, it contains no characters), but as a LOCAL
+             extension, some additional qualifiers are allowed.  The
+             following can be used as qualifiers:
+              1. a simple symbol, which is substituted by its value
+                 before being used in the compound variable name
+              2. a constant symbol, which is uppercased before being used
+                 in the compound symbol
+              3. a null qualifier (as in `a..b')
+              4. a string constant
+              5. a parenthesised expression.
+             The stem and all qualifiers (1) and (2) above are uppercased
+             before use, but the value of a symbol in (1) or of a string
+             constant or expression in (4) or (5) is not uppercased.
+                  After the name of a compound symbol has been found, if
+             it has a value then that value is used, otherwise the name
+             of the symbol is used (with no uppercasing).
+                  If a stem is assigned a value (as in `foo.=7'), then
+             every possible compound symbol is given that value (so, for
+             example, foo.bar now has value 7).  If a stem is used in an
+             expression, its value will be the last value assigned to the
+             stem, if any (and otherwise its value will be the stem's
+             name in uppercase).  So, for example, foo. now has value 7.
+
+             Examples:
+             If foo has been assigned the value 5 but no other names have
+             been assigned values, then:
+                foo is a simple symbol with a value
+                foobar is a simple symbol without a value
+             and
+                foo.5
+                foo.Foo
+                FOO.'5'
+                foo.(foo*3-10)
+             all represent the same compound symbol (which has no value,
+             so the string "FOO.5" will be used).
+             However,
+                foo.'bar'
+                foo.'BAR'
+             represent different compound symbols, each of which has no
+             value (so the strings "FOO.bar" and "FOO.BAR" will be used
+             respectively).
+LOCAL:       Note that qualifiers (4) and (5) above are local extensions.
+
+Literals:         A literal is another name for a constant symbol, or a
+             non-constant symbol without a value.
+
+BUG:  There is an upper limit on the length of variable names. If at any
+      time during the interpretation of a variable name the interpreter's
+      copy of the name is likely to exceed about 250 characters, there
+      will be an error.
+
+Operators:
+
+Each operator described below will be given a priority. Operators are
+applied, from left to right, in order of their priority, 1 being
+carried out last. Thus, in "3+4*5/2" the operations carried out are, in
+order:
+   4*5=20  (priority 8)
+   20/2=10 (priority 8)
+   3+10=13 (priority 7)
+
+Unary operators:  + 11  (+a is similar to 0+a)
+                  - 11  (arithmetical negation)
+                  ^
+              or  \ 11  (boolean negation)
+Binary operators: **10  (exponentiation)
+                  *  8  (multiplication)
+                  /  8  (division)
+                  %  8  (integer division)
+                  // 8  (remainder from integer division)
+                  +  7  (addition)
+                  -  7  (subtraction)
+                  || 6  (concatenation)
+                  =  5  (equality)
+                  == 5  (strong equality)
+                  <>
+              or  ><
+              or  ^=
+              or  \= 5  (not equality)
+                 ^==
+                 \== 5  (strong nequality)
+                  <  5
+                  <=
+              or  ^>
+              or  \> 5  (the usual relations)
+                  >  5
+                  >=
+              or  ^<
+              or  \< 5
+                  >> 5  (strong greater-than)
+                  << 5  (strong less-than)
+                 >>=
+              or ^<<
+              or \<< 5  (strong greater-or-equal)
+                 <<=
+              or ^>>
+              or \>> 5  (strong less-or-equal)
+                  &  3  (boolean and)
+                  |  2  (boolean or)
+                  && 2  (boolean xor)
+
+NOTE: The character `\' and the character `^' both mean `not' and
+      are interchangeable.  The preferred `not' character is `\'.
+
+In addition to these binary operations, there are two concatenation
+operators. Firstly, if two values are placed next to each other with
+no space in between (clearly they must be differentiable for this to
+make sense), they are concatenated, with priority 6. Secondly, if two
+values are placed next to each other with at least one space between,
+they are concatenated with a space between, with priority 6.
+
+For example, 1"+"1"="1+1             has value   1+1=2
+             1    "+" 1   "="1+1     has value   1 + 1 =2
+
+NOTE: There are a small number of cases where the space operator does
+     not give the intended result. Example:
+         1  -2   4   -7       does not equal 1 -2 4 -7
+                              but it equals  -1 -3
+     because spaces are allowed within expressions, and so this
+     expression is interpreted as meaning
+         1-2  4-7
+
+Parentheses are used in order to circumvent the usual priorities of
+operators, so that, for example, (1+2)*3 is 9, whereas 1+2*3 is 7.
+
+A function call consists of a function name (which is a symbol) followed
+immediately by a left parenthesis, a list of expressions separated by
+commas, and a right parenthesis.  Arguments may be omitted simply by
+putting no expression between one comma (or parenthesis) and the next.
+As with simple symbols, the function name is translated to upper case
+unless it is a string constant.  Note that a function name must not
+end with a dot unless it is quoted, because in that case it would be
+interpreted as a compound symbol containing a parenthesised expression.
+Also note that there must be no space between the function name and the
+opening parenthesis, because otherwise the space will be treated as a
+concatenation operator (see above).  When a function is called, it must
+return a result, otherwise an error will be raised.
+
+Examples: time('c')       uname('-a')        format(x,,,,4)
+
+See the section on function or subroutine invocation for more details.
+
+Arithmetic Operators:
+
+  The operand(s) must be numeric values. If they are not, then an error
+results.
+  The usual arithmetic rules apply. See the "NUMERIC" command.
+  The y operand the exponentiation operator in "x ** y" must be an
+integer, otherwise an error results. The exponentiation operator works
+effectively by multiplying x by itself y times, and taking the
+reciprocal if y<0. (It uses an O(log y) method).
+  The integer division operator % is defined so that x%y is the integer
+part of x/y (obtained by rounding towards zero), and x = y*(x%y) + (x//y)
+For example, 10 % 0.3 = 33  and  10 // 0.3 = 0.1
+  An integer is a whole number which lies within the range of the machine
+(-2**31 to 2**31-1).  A whole number is any number with no non-zero
+fractional part which would not be written in exponential notation when
+formatted.
+  The maximum exponent is about 999999999. An overflow or underflow
+will occur if the limit is exceeded.
+
+BUG:  You might find that the maximum number boundary is a little `fuzzy'
+      but if you keep below 1E999999990 you should be alright!
+BUG:  Whole numbers must be less than 1999999999.
+
+Boolean logic:
+
+Several of the above operators operate on boolean values or create
+boolean values. The following rules apply:
+
+1. The result of a binary relation or of the \ (or ^) operator is always
+   1 for true, 0 or false.
+2. A boolean value is represented by any number (attempts to use other
+   strings will result in an error). False is represented by zero, and
+   any other number represents true.
+
+LOCAL: In `real' REXX a boolean value may only be represented by 0 or 1.
+
+3. \x has the obvious meaning consistent with the above (i.e. 1 if x=0,
+   and 0 otherwise).
+4. x & y   is 0 if y is false but has the same value as x when y is true.
+5. x | y   is 1 if y is true but has the same value as x when y is false.
+6. x && y  has value x if y is false, and \x otherwise.
+
+Binary relations:
+
+(note that the symbol '\' means `not' and may be placed before any of the
+relations to negate its value, e.g. \=, \>> etc. Thus, for instance,
+\> and <= have the same meaning, as do \>> and <<=, etc.  The character
+`^` is a synonym for '\' - so ^== is the same as \==).
+
+The operators ==, \==, <<, >>, <<=, >>= compare their two operands
+character by character and thus have the normal meaning of string
+equality, greater, less, etc.
+
+All other operators depend on whether or not both operands are numeric.
+If they are, then they are subtracted and the result compared with zero.
+Otherwise, leading and trailing spaces are stripped and the operations
+are compared as strings usually are, with the shorter string being
+padded on the right with spaces before the comparison.
+
+Hence:  "0.10"    \== "1e-1"        (strict string comparison)
+        "0.10"     =  "1e-1"        (numeric comparison)
+        "  hello" \== "hello  "     (strict comparison respects spaces)
+        "  hello"  =  "hello  "     (weak comparison strips spaces)
+        "abc "     >> "abc"         (strict comparison respects spaces)
+        "61626300"x < "616263"x     (the latter is padded with a space)
+        "61626364"x > "616263"x     (ordinary string comparison)
+        "2.5"       > "10abc"       (string comparison)
+        "2.5"       < "10"          (numeric comparison)
+        "2.5"      >> "10           (strict string comparison)
+
+In this implementation, character comparisons are unsigned, that is to
+say "ff"x is greater than "00"x, etc.
+_________________________________________________________________________
+
+Function or Subroutine Invocation
+
+A function is a routine which is called using the syntax:
+
+   symbolorstring(arguments)
+
+whereas a subroutine is a routine which is called using the syntax:
+
+   CALL symbolorstring arguments
+
+In each case the method of searching for and executing the routine is
+that detailed below.  What happens when the routine returns depends upon
+whether the routine was called as a function or a subroutine: a function
+is required to return a result, whereas a subroutine need not.  Also, the
+result from a subroutine, if any, is assigned to the special variable
+RESULT after the subroutine finishes.  The remainder of this section
+describes the features which are common to subroutines and functions.
+
+There are three types of routine, which are searched in the following
+order:
+  1. Internal routines.  These are not searched if the routine name is a
+     string constant.
+  2. Built-in routines (a list of which is given in the next section).
+     Note that if the routine name is a string constant, it must be in
+     upper case for the search to succeed.
+  3. External routines.
+
+An internal routine is one which is stored in the currently executing
+program.  It is introduced by a label, which takes the form
+  name:
+and may be placed anywhere at the start of an instruction (or on its
+own on a line).  When an internal function is called, all labels are
+checked.  When a match is found, interpretation jumps to the instruction
+immediately following the label, and continues until the next RETURN
+statement (or EXIT, or the end of the program).  When RETURN is reached
+execution continues from the point of the call (but since reaching an
+EXIT or the end of the program causes the program to terminate, execution
+cannot continue in these cases). 
+
+The arguments to an internal routine may be found using the "PARSE ARG"
+instruction.  A result may be returned to the caller by writing it as a
+parameter to the RETURN instruction.
+
+The name of a label or of an internal routine may contain letters,
+numbers, dots and characters which are valid in symbols, but must not
+end with a dot.  The name is translated to uppercase (except in the
+case of string constants) but no variable substitution occurs, even
+after a dot.
+
+On entry to an internal function, the special variable SIGL will be
+set to the line number of the instruction which caused the transfer of
+control.  This applies equally to function calls, subroutine calls with
+the CALL instruction, and instructions which cause a condition handler
+to be called (see "CALL ON").
+
+An internal routine may or may not hide (some or all of) its variables
+using the PROCEDURE instruction, described below.  By default, all
+variables remain visible during an internal routine.
+
+An external routine is any routine which is stored in a separate file
+on the system.  It may be in Rexx or in any other language, and it may
+be stored singly or in a library.  Libraries are searched first, in the
+directories named by environment variable REXXLIB, or, if that is not
+set, in the path chosen at compile time (see the technical reference for
+details on how to write a function library).  If a routine is not found
+in a library, it is searched for in the directories named by environment
+variable REXXFUNC or (if that is not set) REXXPATH or (if neither of
+those is set) PATH.  The name of the routine as given by the calling
+program will be translated to lower case, even if it is a string constant
+(though this may change in a future release).  The full path name of
+the routine, excluding its file extension, may be given by the calling
+program, but in this case the name will need to be enclosed in quotes
+because otherwise the slash (/) would be interpreted as a division
+operator.
+
+An external routine or library may be written in one of four ways,
+which are searched for in order:
+   - A function registered by RXFUNCADD or by using the API;
+   - A dynamically loaded object file whose name ends with ".rxfn";
+   - A Rexx program whose name ends with either
+      * the default extension, or
+      * the interpreter-supplied extension (usually ".rexx"), or
+   - Any Unix program whose name matches that given by the caller
+     without a file extension.
+
+The technical reference gives details on how to write external functions
+which can be registered or dynamically loaded, or which are Unix
+programs.  Note, however, that certain Unix system programs may be
+also called using this interface, for example: uname('-s')='SunOS'
+(perhaps).
+
+An external routine which is a Rexx program will be executed as if it
+were a completely separate process.  All parameters such as NUMERIC
+DIGITS and ADDRESS will be set to default values, all condition traps
+(see "CALL ON" and "SIGNAL ON") will be reset, and none of the variables
+of the caller will be accessible (but see OPTIONS 'EXPOSE' below).  All
+these things will be preserved during the external routine and restored
+when the routine finishes.  However, OPTIONS settings may or may not be
+reset to their defaults and preserved.  There is thus no way for one REXX
+program to affect the variables of another, except via parameters and
+results.  (Note that data can be passed back and forth via the stack,
+however).
+
+An external routine which is a Rexx program may use the "PARSE ARG"
+instruction to examine its arguments, and may return a result to
+the caller by specifying it as a parameter to the RETURN or EXIT
+instructions.  When the program terminates using RETURN or EXIT or
+when the interpreter reaches the end of the program, the caller will
+resume execution as normal.
+
+NOTE: Once a ".rxfn" routine or library has been found, all the routines
+      defined within it become in effect built-in functions.  When the
+      interpreter is searching for such a routine, the name is not
+      translated to lower case, and any leading path name is ignored.
+      However, the name of the routine (i.e. that part which comes after
+      the last slash) will usually be required to be in upper case - so
+      "/my/directory/ROUTINE" is the preferred way to name a routine in
+      /my/directory.
+NOTE: The above notes about case translation will change in the future.
+
+NOTE: When a single routine other than a ".rxfn" file is found, its
+      file name is stored by the interpreter.  This result will be
+      used for any future references to routines with the same spelling
+      (including case).  This makes the call faster, but it means that
+      files used as routines should not be renamed while the interpreter
+      is active.  A similar note applies to libraries: the interpreter
+      reads all library definitions at the first external routine call,
+      and therefore libraries should not be changed or renamed while the
+      interpreter is active.
+
+Examples (assuming that the default extension is ".rexx"):
+  foo(3,,6)          calls an internal or built-in function named FOO,
+                     or an external function named foo.rxfn, foo.rexx
+                     or just foo, with arguments "3", nothing, "6".
+  'DATE'()           always calls the built-in function DATE with no
+                     arguments.
+  call "/bin/ABC" 6  calls an external subroutine named /bin/abc.rxfn,
+                     /bin/abc.rexx or /bin/abc with argument "6".
+
+This program uses an internal function to calculate a factorial.
+
+        parse arg x         /* this is an example factorial program. */
+        say x"!="fact(x)
+        exit
+ fact:  parse arg p         /* the argument to fact is assigned to p */
+        if p<3 then return p
+        return p*fact(p-1)
+_________________________________________________________________________
+
+Built-In Functions
+
+In this section, several of the function arguments are named with the
+following conventions:
+
+ "number"   must be numeric.
+ "length"   must be a non-negative whole number.
+ "count"    must be a non-negative whole number.
+ "position" must be a positive whole number.
+ "pad"      must be a string of length 1.
+ "option"   must be a nonempty string.  Only the first character of the
+            option is significant, and it is translated to uppercase
+            before use.
+ "file"     must be the name of a stream.  This can be any nonempty
+            string which does not contain NUL characters ('0'x).
+ 
+
+ABBREV(information,info[,length])
+
+This returns 1 if info is a valid abbreviation of information - that is,
+info is a prefix of information and its length is at least that specified
+by the optional third argument (whose default is the length of info). If
+the length given is zero, then a null string is a valid abbreviation of
+anything.
+
+ABS(number)
+
+The magnitude of the given number is returned.
+
+ADDRESS()
+
+The current environment string is returned (see ADDRESS instruction).
+
+ARG([position][,option])
+
+This function deals with the argument(s) passed into a REXX program,
+function or subroutine. With no parameters, the result is the number of
+arguments given; that is, the position of the last explicitly specified
+argument. If the parameter "position" is given, then the result is the
+"position"th argument string, or an empty string if the argument was
+not supplied. If the option is supplied, its first character must be
+"E" or "O", standing for "Exists" or "Omitted" respectively. The result
+of the function is then 0 or 1, depending on whether the "position"th
+argument string exists or was omitted, with 1 meaning that "option" is
+true.
+
+  Example: if a rexx function was called by: 
+         foo(5,,7)
+  then   arg()      = 3
+         arg(1)     = 5
+         arg(2,'e') = 0
+
+BITAND(string1[,[string2][,pad]])
+
+This function performs a bitwise-AND on its two string arguments.  If
+the string2 argument is omitted, an empty string is used for string2
+instead.  Before the operation, the shorter of the two string arguments
+is padded with the pad character.  If no pad character is given, then
+'FF'x is used, so that excess characters in the longer string remain
+unchanged after the operation.  The result of the operation is the
+string of characters such that the nth character in the string is the
+bitwise-AND of the nth character of string1 and the nth character of
+string2.
+
+BITOR(string1[,[string2][,pad]])
+
+This function performs a bitwise-OR on its two string arguments.  If
+the string2 argument is omitted, an empty string is used for string2
+instead.  Before the operation, the shorter of the two string arguments
+is padded with the pad character.  If no pad character is given, then
+'00'x is used, so that excess characters in the longer string remain
+unchanged after the operation.  The result of the operation is the string
+of characters such that the nth character in the string is the bitwise-OR
+of the nth character of string1 and the nth character of string2.
+
+BITXOR(string1[,[string2][,pad]])
+
+This function performs a bitwise-XOR on its two string arguments.  If
+the string2 argument is omitted, an empty string is used for string2
+instead.  Before the operation, the shorter of the two string arguments
+is padded with the pad character.  If no pad character is given, then
+'00'x is used, so that excess characters in the longer string remain
+unchanged after the operation.  The result of the operation is the
+string of characters such that the nth character in the string is the
+bitwise-XOR of the nth character of string1 and the nth character of
+string2.
+
+C2X, C2D, B2X, B2D, D2C, D2B, D2X, X2B, X2C, X2D
+
+Each of these is a function taking an argument and possibly a count and
+returning a conversion of that argument. Each function converts an
+argument of a type indicated by the first character of the function name
+(Character, heX, Binary or Decimal) into the type indicated by the last
+character of the name.
+
+ Examples: c2x("abc") = "616263"   d2x(286)="11E"
+           d2c(65)="A"             d2b(65)="01000001"
+
+BUG: Each of the conversion functions which deal with decimal numbers is
+     restricted to inputs which have a value of less than 2**31 when
+     converted to an unsigned integer.
+LOCAL: B2D and D2B are not defined in standard REXX.
+
+Details of these functions are below:
+.........................................................................
+
+B2D(binary)
+
+The binary input is converted into a non-negative decimal number.  Spaces
+are allowed in the binary string between four-digit sequences, and the
+first "four-digit" sequence may contain fewer than four digits, in which
+case up to three leading '0' digits will be assumed.
+
+B2X(binary)
+
+Each set of four binary digits in the input is converted to a hex digit
+and these are concatenated together to form the result.  Spaces are
+allowed in the binary string between four-digit sequences, and the
+first "four-digit" sequence may contain fewer than four digits, in
+which case up to three leading '0' digits will be assumed.
+
+D2B(decimal)
+
+The decimal input is converted into binary. The length of the result is
+the smallest possible multiple of 8.
+
+C2X(string)
+
+The n-character string is converted into 2n hex digits.
+
+C2D(string[,length])
+
+The string is converted into a decimal number, interpreting the leftmost
+character as the most significant byte.  If length is omitted, then the
+whole string is converted and the result is positive. If the length is
+given, then the string is truncated or padded with zero bytes on the
+left to give a string of this length, and is then taken to be a twos
+complement number. In this case the result may therefore be negative.
+
+D2C(decimal[,length])
+
+The decimal number is converted into a string of characters (with the
+leftmost character being the most significant). If the length is given,
+then the result is truncated or sign-extended on the left to be of this
+length.  Otherwise the length of the result is such that the leftmost
+character is not '00'x (for positive numbers) or 'FF'x (for negative
+numbers) except in the case of zero, which is converted to '00'x.
+
+D2X(decimal[,length])
+
+The decimal number is converted into a hex number.  If the length is
+given, then the result is truncated or sign-extended on the left to be
+of this length.  Otherwise the length of the result is such that for
+positive numbers there is no leading zero, and for negative numbers
+there is no leading 'F' except in the case when the next hex digit is
+less than 8. D2X(0) returns a single zero digit.
+
+X2B(hex)
+
+Each digit in the given hex string is converted to four binary digits and
+these are concatenated together.  Spaces are optional between pairs of
+hex digits, and the first "pair" of digits may contain only one digit.
+
+X2C(hex)
+
+The hex string is converted to characters, just as when 'hex'x is typed.
+Spaces are optional between pairs of hex digits, and the first byte of
+the string may optionally contain only one digit, in which case a
+leading '0' is assumed.
+
+X2D(hex[,length])
+
+The hex string, which should contain only hex digits (and no spaces) is
+first truncated or extended with zeros on the left to be of the given
+length if necessary, and then converted into a decimal number.  If the
+length is given, then the hex is assumed to be in twos complement
+notation.  Otherwise the result will always be nonnegative.
+.........................................................................
+
+CENTER(s,length[,pad])  or  CENTRE(s,length[,pad])
+
+This function returns a string of the given length containing s. If s
+contains fewer than the required number of characters, then pad
+characters (pad, or by default, blanks) are added on each side to
+centre s in the result, otherwise characters are taken away from each
+side of s leaving the middle block of characters. If an odd number of
+characters needs to be added or taken away, then the right-hand side
+loses or gains one more than the left.
+
+CHARIN([file] [,[position] [,count]])
+
+Reads characters from a file. See the section on the REXX I/O model.
+
+CHAROUT([file] [,[string] [,position]])
+
+Writes characters to a file. See the section on the REXX I/O model.
+
+CHARS([file])
+
+Finds the number of characters available for reading. See the section on
+the REXX I/O model.
+
+CLOSE(file)
+
+Closes a file. See the section on the REXX I/O model.
+
+COMPARE(s1,s2[,pad])
+
+The strings s1 and s2 are compared, after first making them of equal
+length by adding pad characters (or spaces) to the right of the shorter.
+The result is 0 if the strings are identical, otherwise the position of
+the first character at which the strings disagree.
+
+CONDITION([option])
+
+This function returns information about the current trapped condition
+(see "SIGNAL ON" and "CALL ON" for more information).  If there is no
+such condition, then an empty string is returned.  If the option is
+present, it must be one of the following:
+
+   'C': Returns the condition which was trapped (one of "SYNTAX",
+        "ERROR", "HALT", "NOVALUE", "FAILURE" or "NOTREADY").
+   'D': Returns a description of the event which caused the condition.
+        For "ERROR" and "FAILURE", this is the command string which
+        resulted in error or failure.  For "NOTREADY" it is the name of
+        the stream which was not ready.  For "NOVALUE" it is the
+        derived name of the variable which has no value.  For "HALT" it
+        is the Unix name of the signal which caused the interruption.
+        For "SYNTAX" it is the error message which would have been
+        displayed on the terminal if the error had not been trapped.
+   'I': Returns the instruction name "CALL" or "SIGNAL" as appropriate
+        to describe how the condition was trapped.
+   'S': Returns the current status of the condition as "ON", "OFF" or
+        "DELAY".
+
+If the option is omitted then 'I' is assumed.
+
+COPIES(s,count)
+
+This function returns a string consisting of "count" copies of the
+string s concatenated together.
+
+DATATYPE(string[,option])
+
+This function tests the datatype of the string. If the function is called
+with just one argument, then the function returns "NUM" if the argument
+is a valid number, and "CHAR" otherwise.
+
+If both arguments are supplied, then the answer is a logical value
+(0 or 1) indicating whether or not string is of the type given by the
+option.  Is s is an empty string then the answer is always 0 unless
+testing for a hex constant (the null string is a valid hex constant).
+The option must be one of the following:
+
+   'A': s is alphanumeric (containing characters only from the ranges
+        "a-z", "A-Z" and "0-9")
+   'B': s contains bits (all characters 0 or 1)
+   'L': s is lower case (containing only "a-z")
+   'M': s is mixed case (containing only "a-z" and "A-Z")
+   'N': s is a valid number
+   'S': s is a valid REXX symbol (variable or constant)
+   'U': s is upper case (containing only "A-Z")
+   'W': s is a whole number
+   'X': s satisfies the rules for a hex constant (i.e. contains only
+        "0-9", "a-f", "A-F" and blanks in appropriate places).
+
+DATE([option][,date[,option]])
+
+When used with zero or one arguments, the DATE function returns the
+current date in a user-defined format.  When used with two or three
+arguments, it converts the date given in the second parameter from
+one format to another.
+
+The format in which the date will be output is given by the first
+parameter, whose first letter must match that of one of the options
+listed below.  If the parameter is omitted then 'N' is assumed.
+
+Base    - the theoretical number of days in the common era (i.e. since
+          1/1/1 AD).  On 1/1/1900 the result would be 693595.
+Century - the number of days so far since the zero year of the most
+          recent century (so on 1/1/1900 or 1/1/2000 the result would be
+          1).  This option is deprecated and was not adopted by ANSI; use
+          the Base option instead.
+Days    - the number of days so far in this year (so on 12 Jan 1986 the
+          result would be 12).
+European- the date in the format dd/mm/yy.
+Julian  - the date in the format yyddd (where ddd is as in "Days" above).
+          This option is deprecated and was not adopted by ANSI.
+Month   - the full name of the current month, e.g. August.
+Normal  - the date in the format dd Mmm yyyy, e.g. 27 Aug 1982 (with no
+          leading zero).
+Ordered - the date in the format yy/mm/dd.
+Standard- the date in the format yyyymmdd.
+USA     - the date in the format mm/dd/yy.
+Weekday - the full name of the current day, e.g. Tuesday.
+
+If a date is given in the second parameter, the third parameter must
+state what format it is in (if the third parameter is omitted then 'N'
+is assumed).  The possible values for the third parameter are the same
+as listed above, with the exception that options 'W' and 'M' are not
+allowed.  If the input date has a two-digit year then the century is
+chosen so as to make the year no more than 49 years before or 50 years
+after the current year.
+
+On the first call to DATE or TIME in an expression, a time stamp is
+made which is then used for all calls to these functions within that
+expression.  Hence if multiple calls to these functions are made within
+a single expression, they are guaranteed to be consistent with each
+other.
+
+BUG: The DATE function only works within the limits defined for Unix
+     dates (usually approximately 1902-2037), and in any case the
+     DATE('C') function only works between 1900 and 2099.  Using 'C' for
+     the input format may occasionally result in the wrong century being
+     chosen if the given date is very close to 50 years from this
+     year.    
+BUG: The DATE function is slightly lenient in what it accepts as a valid
+     date from the second parameter.  For instance, "30 Feb 1997" would
+     be accepted as if it said "2 Mar 1997".
+
+DELSTR(string,position[,length])
+
+A substring of string is deleted and the result returned. The substring
+to be deleted starts at the given position and has length length. If
+the length is not specified, then the rest of the string is deleted.
+If the given position is greater than the length of the string, or if
+length is zero, then the string is returned unchanged.
+
+DELWORD(string,position[,count])
+
+This function is a word-oriented version of DELSTR. It deletes the
+substring of string which starts at the "position"th blank-delimited
+word and is of "count" blank-delimited words. If there are not
+"position" words in the string, or if count is 0, the string is
+returned unchanged. The string deleted includes any blanks following
+the final word deleted, but does not remove any blanks preceding the
+first word deleted.
+
+DIGITS()
+
+The result is the current setting of NUMERIC DIGITS.
+
+ERRORTEXT(i)
+
+i must be a whole number. The result is the message that would be
+displayed if error i were to occur, except that it does not include
+information such as the name of an undefined label, etc.. If error i is
+not defined, then an empty string is returned.
+
+Standard Unix I/O errors may be retrieved with this function also.
+Just add 100 to the error number.
+
+See the section on error messages.
+
+BUG: REXX/imc defines messages for the values 199-203.  Some systems have
+more than 98 Unix I/O errors and on these systems messages 99-103 cannot
+be returned by the ERRORTEXT function.
+
+FDOPEN(fd [,[mode] [,file]])
+
+Open a file descriptor for reading or writing. See the section on the
+REXX I/O model.
+
+FILENO(file)
+
+Gives the fd number associated with a file. See the section on the REXX
+I/O model.
+
+FORM()
+
+The result is either "SCIENTIFIC" or "ENGINEERING", according to the
+current setting of NUMERIC FORM.
+
+FORMAT(number [,[before] [,[after] [,[expp] [,expt]]]] )
+
+The given number is rounded and formatted according to the information
+given, as described below (note that the number is always rounded
+according to NUMERIC DIGITS, if necessary, before being processed by
+this function):
+
+If just `number' is specified, then it is formatted according to the
+usual rules for REXX numerics.
+
+The number is formatted, possibly in exponential form, with `before'
+digits before the decimal point and `after' digits after. `before' must
+be strictly positive and includes any leading minus sign. `after' must
+be non-negative. If `after' is zero, then there will be no decimal
+point in the output. If either `before' or `after' is omitted, then
+as many places as required are used. If `before' is too small then an
+error results. If it is too large, then leading spaces are used to fill
+the extra places. The number is rounded or extended with zeros as
+necessary in order to have `after' digits after the decimal point
+(note that this is not the same as TRUNC, which truncates the number
+rather than rounding it). The rounding rules are as usual - the first
+digit which is not required is checked and if it is 5 or more, the last
+required digit is incremented.
+
+`expt' specifies the trigger for exponential form. Exponential form is
+used whenever the number would otherwise require more than `expt'
+digits before or more than twice `expt' digits after the decimal point.
+If `expt' is zero, exponential form is always used. The number will be
+formatted according to NUMERIC FORM, and may need up to three places
+before the decimal point if ENGINEERING form is in effect. The default
+value for `expt' is the current setting of NUMERIC DIGITS.
+
+`expp' specifies the number of digits (excluding the letter E and the
+sign) used for the exponent. If it is zero, exponential form is never
+used (this overrides the setting of `expt' if necessary). Otherwise, if
+exponential form needs to be used, the exponent must fit in the specified
+width, or an error results. Leading zeros are added as necessary to make
+the exponent the correct width. A zero exponent, however, always causes
+`expp+2' spaces to be added instead of the exponent (but no spaces if
+expp is omitted, or is zero). If `expp' is omitted, then as many places
+as required are used for the exponent.
+
+Examples: (with NUMERIC FORM SCIENTIFIC and NUMERIC DIGITS 9)
+
+format('3',4)             == '   3'
+format('1.73',4,0)        == '   2'
+format('1.73',4,3)        == '   1.730'
+format('-.76',4,1)        == '  -0.8'
+format('0.000')           == '0'
+format('12345.73',,,2,2)  == '1.234573E+04'
+format('12345.73',,3,,0)  == '1.235E+4'
+format('1.2345',,3,2,0)   == '1.235    '
+format('1234567e5',,3,0)  == '123456700000.000'
+
+FTELL(file)
+
+Gives the current pointer position of a file. See the section on the
+REXX I/O model.
+
+FUZZ()
+
+The result is the current setting of NUMERIC FUZZ.
+
+INSERT(new,target[,[n][,[length][,pad]]])
+
+The new string is inserted into the target string after the nth character
+or if n is omitted or is zero, the new string is inserted before the
+beginning of the target string. If length is specified, then the new
+string is padded or truncated to that length before inserting. The
+default pad character is a blank.
+
+JUSTIFY(s,length[,pad])
+
+This function first removes all surplus space from s (as per SPACE(s) ),
+then attempts to right-justify s in a string of "length" characters by
+adding spaces between the words of s. If s does not fit in a field of
+"length" characters, the first "length" characters of s are returned.
+If the optional pad character is supplied, then the words in the output
+string are separated by instances of that character rather than by
+spaces.
+
+LASTPOS(needle,haystack[,position])
+
+This function finds the last occurrence, if any, of the needle within
+haystack. The answer is the position of the last occurrence if there is
+one (numbering from 1 to the length of haystack), or zero if needle does
+not occur in haystack. If the optional position is supplied, the search
+starts from this position instead of the end of haystack.  If the
+needle is the empty string, zero is returned.
+
+LEFT(string,length[,pad])
+
+The first two mandatory parameters are a string and a length. The result
+of this function is the leftmost "length" characters of string. If
+string has fewer than this many characters, then it is padded up to the
+required length with spaces on the right, or, if the pad character is
+given, with this character.
+
+Examples: left("12345",2) = "12"   left("123",5,"0") = "12300"
+
+LENGTH(string)
+
+The result is the number of characters in string.
+
+LINEIN([file] [,[line] [,count]])
+
+Inputs a line from a file. See the section on the REXX I/O model.
+
+LINEOUT([file] [,[string] [,line]])
+
+Outputs a line to a file. See the section on the REXX I/O model.
+
+LINES([file])
+
+Determines whether lines can be read from a file. See the section on the
+REXX I/O model.
+
+LINESIZE()
+
+The function attempts to find out the terminal width using a TIOCGWINSZ
+ioctl on the terminal, and returns the answer. If the ioctl returns an
+error (for instance because there is no controlling terminal), then
+zero is returned.
+
+MAX(number[,number...])
+
+This function returns the maximum of a non-empty list of numbers.
+
+MIN(number[,number...])
+
+This function returns the minimum of a non-empty list of numbers.
+
+OPEN(path [,[mode] [,file]])
+
+Opens a file for reading and/or writing. See the section on the REXX I/O
+model.
+
+OVERLAY(new,target[,[position][,[length][,pad]]])
+
+The new string is padded or truncated to the given length and overlaid
+on to the target string starting at the given position.  The default
+position is 1, that is, the start of the target string.
+
+PCLOSE(file)
+
+Closes a file which was opened by POPEN. See the section on the REXX I/O
+model.
+
+POPEN(command [,[mode] [,file]])
+
+Opens a pipe to a shell command. See the section on the REXX I/O model.
+
+POS(needle,haystack[,position])
+
+This function finds the first occurrence, if any, of needle within
+haystack. The answer is the position of the occurrence if there is one
+(starting from 1) or zero if needle does not occur in haystack. If the
+optional position is supplied, the search starts from this position
+instead of 1.  If the needle is the null string, zero is returned.
+
+QUEUED()
+
+This function returns the number of entries on the REXX stack.
+
+RANDOM([min][,[max][,seed]])
+
+A pseudo-random number is returned. If no arguments are supplied, the
+number will be between 0 and 999 (inclusive). If one argument is supplied
+then the result will be between 0 and that number. If both min and max
+are given, then the result will be between min and max inclusive.
+min must be no greater than max and the magnitude of the range (that is,
+max - min) must not exceed 100000.  min, max and seed must be whole
+numbers if they are specified.
+
+Usually the third argument (the seed) is not supplied. In this case, on
+the first call to this function the random number generator is seeded
+from the system clock, and the seed is not affected on further calls, so
+that a `good' sequence of random numbers is obtained.
+
+The seed may be set to a specific value on each call by supplying the
+third argument. To gain a predictable sequence of random numbers, the
+seed is specified on the first call but not on subsequent calls.
+
+REVERSE(string)
+
+The function returns the reverse of string.
+
+RIGHT(string,length[,pad])
+
+In a similar manner to LEFT, this function returns the rightmost
+"length" characters of string. If the string is too short then it is
+padded on the left with spaces, or with the pad character if this is
+supplied.
+
+RXFUNCADD(rexxname,module,sysname)
+
+This function attempts to register a function stored in a shared object
+and returns zero if it was successful.  (This is simply an interface to
+the API call RexxRegisterFunctionDll - see the technical reference - and
+the possible return values are the same as those returned by that API
+call.)
+
+The "rexxname" parameter gives the name by which the function will
+henceforth be known in Rexx.  The "module" parameter gives the name of
+the shared object containing the function, and the "sysname" parameter
+gives the name by which the function entry point is known in the shared
+object.  The object will be searched for in the path given by the
+environment variable REXXLIB or (if that is not set) REXXFUNC; if these
+are not set then the compile-time default is used.  The module name will
+be used unamended; if this is not found then ".rxfn" will be appended and
+the search repeated.
+
+NOTE: Since registered functions in REXX/imc are case sensitive, this
+function will register the function twice: once with the given name and
+once with an uppercased version of the given name (unless the given name
+was already in upper case).  This allows you to say, for example:
+
+   call RxFuncAdd "SysLoadFuncs","rxsysfn","SysLoadFuncs"
+   call SysLoadFuncs
+
+which would not otherwise work because the first line registers a
+function called "SysLoadFuncs" whereas the second line looks for
+"SYSLOADFUNCS".  The return value will be zero only if both operations
+succeeded.
+
+NOTE: Unlike the OS/2 version of this function, the REXX/imc version
+attempts to load the function immediately and will return non-zero if the
+function could not be found.
+
+RXFUNCDROP(function)
+
+This function attempts to deregister a function and returns zero
+on success (otherwise the return value is 1).  A function can be
+deregistered if it was loaded with RXFUNCADD, registered via the API or
+auto-loaded.
+
+In a similar manner to that of RXFUNCADD, this function will deregister
+the name twice - once as given and once in upper case.  Zero is returned
+if either operation succeeded.
+
+RXFUNCQUERY(function)
+
+This function returns zero if the given function is registered (that is,
+it was loaded with RXFUNCADD, registered via the API or auto-loaded) and
+1 otherwise.
+
+As with RXFUNCDROP, this function will return zero if the name is
+registered either verbatim or in upper case.
+
+SIGN(num)
+
+This function returns the sign of the given number.  The result is 1 if
+num is positive and -1 if num is negative.  If num=0 then zero is
+returned.
+
+SOURCELINE([i])
+
+If i is omitted, then the result is the number of lines in the program.
+Otherwise, i must be an integer between 1 and sourceline() and the result
+is the ith program line.
+
+SPACE(s[,[count][,pad]])
+
+This function formats the blank-delimited words of s with "count" pad
+characters between each word and with no leading or trailing blanks.
+The default for "count" is 1, and the default pad character is a space.
+If "count" is 0 then all blanks are removed.
+
+STREAM(stream[,[option][,command]])
+
+This function examines or executes a command upon a stream.  See the
+section on the REXX I/O model for more information.
+
+STRIP(string[,[option][,char]])
+
+Up to three parameters may be supplied. The first is a string upon which
+the operation is performed - this normally consists of stripping leading
+and trailing spaces. The second parameter, if supplied, must start with
+one of the letters "L", "T" or "B". This means strip leading spaces,
+trailing spaces, or both, respectively. The third parameter, if
+supplied, must be a single character, in which case this character is
+stripped instead of spaces.
+
+Example: strip("000123450","l","0") = "123450"
+
+SUBSTR(string,position[,length[,pad]])
+
+This function makes a substring of string. Usually the parameters
+string, position and length are supplied and the result is the
+substring of string of length "length" starting at the "position"th
+character - so
+   substr("abcdefg",3,2) = "cd".
+If the length is omitted, then the substring continues to the end of the
+string - so
+   substr("abcdefg",4) = "defg".
+If part of the substring requested is outside of string, then spaces are
+added - or if the parameter pad is given, this character is used to pad
+the result. Thus
+   substr("abc",2,4,"0") = "bc00" and substr("abc",-1) = "  abc".
+
+LOCAL: REXX/imc allows the position to be a negative whole number.
+
+SUBWORD(string,position[,count])
+
+A substring of the given string is returned, starting at the
+"position"th blank-delimited word, and of length "count" words. If
+"count" is not specified, then the rest of the string, starting at the
+"position"th word, is returned. The result never contains leading or
+trailing blanks, but it contains all spaces between the words extracted.
+
+SYMBOL(name)
+
+The argument is interpreted as a symbol (or a number); it is uppercased,
+and if it is a compound symbol, any simple symbol components of the tail
+are substituted in as with the VALUE function. The result is the three
+character string "BAD", indicating that the name is not a valid symbol,
+"VAR", indicating that the name is a variable (i.e. a symbol which has
+been assigned a value), or "LIT", indicating that the name is either a
+constant symbol or a symbol without a value.  For example, the program:
+   b='*'; a.b=5
+   say symbol('a') symbol('b') symbol('a.B') symbol(A.b)
+   say symbol('a.*') symbol('b.a') symbol('b.*')
+would say "LIT VAR VAR LIT" and "BAD LIT BAD".
+
+TIME([option][,time[,option]])
+
+The TIME function has three uses:
+ - to return information about the current local time;
+ - to operate an elapsed time counter, and
+ - to convert a time from one format to another.
+
+In order to return information about the current local time, a single
+optional parameter is supplied whose first letter must match that of one
+of the formatting options listed below.  If the parameter is omitted then
+'N' is assumed.
+
+Civil   - The time in the format hh:mmxx where hh is the hour in 12-hour
+          notation (no leading zero), mm is the minute, and xx is either
+          am or pm.
+Normal  - The time in 24-hour clock format as hh:mm:ss.
+Long    - The time in 24-hour clock format as hh:mm:ss.uuuuuu where
+          uuuuuu is the number of microseconds.
+Hours   - the number of hours since midnight.
+Minutes - the number of minutes since midnight.
+Seconds - the number of seconds since midnight.
+Offset  - the current difference (if known) between GMT and local time
+          measured in seconds (positive if local time is ahead).
+
+If two or three parameters are supplied then the second parameter is a
+time which must be in one of the above formats (with the exception that
+'O' format is not allowed) and the optional third parameter must state
+which format it is in.  If the third parameter is omitted then 'N' is
+assumed.  If the input time is in 'M' or 'H' format then the seconds
+and/or minutes values in the result will be filled in with zeros as
+necessary.  This form of the TIME function makes straight conversions and
+does not take account of any changes in daylight savings time.
+
+The elapsed time counter is operated by calling the TIME function with
+a single parameter whose first letter matches that of either of the
+following.
+
+Elapsed - On the first call the result is 0 and on subsequent calls
+          the result is the elapsed time since then in the format
+          sssss.uuuuuu (no leading zeros).
+Reset   - same as Elapsed, but after the time is calculated, the timer
+          is reset to zero.
+
+On the first call to TIME or DATE in an expression, a time stamp is made
+which is then used for all calls to these functions within that
+expression. Hence if multiple calls to these functions are made within
+a single expression, they are guaranteed to be consistent with each
+other. Note that this means that:
+
+        say time(e) sleep(2) time(e) x
+        exit
+  sleep:'sleep' arg(1)
+        x=time(e)
+        return ""
+
+will type "0 0 2.062564" (perhaps) even though over two seconds elapse
+during evaluation of sleep(2).  Also, the timestamp only applies to
+time() calls within a single expression, so the line "x=time(e)" is not
+affected by the timestamp.
+
+The elapsed time counter is saved across function calls.  This means that
+although a procedure inherits the elapsed time counter from its caller,
+if it should reset the clock, this does not affect any timing which may
+be in progress by the caller.
+
+NOTE: The time is subject to the accuracy of the system clock, which may
+      not give a very reliable number of microseconds.  The TIME('O')
+      function relies on the operating system to return the correct
+      offset and this may be unknown or inaccurate.  The TZ environment
+      variable may have an effect on determining the current timezone.
+
+TRACE([setting])
+
+The result is the current trace setting, consisting of one upper case
+letter, possibly preceded by a single question mark. If the setting
+is supplied as a parameter, then this is used as a trace setting for
+all further execution. See the TRACE command for details.
+
+TRANSLATE(string[,[tableo][,[tablei][,pad]]])
+
+This function translates characters in string to other characters, or
+may be used to change the order of characters in a string.
+If neither translate table is specified, then the string is translated
+into uppercase. Otherwise each character of string which is found in
+tablei is translated into the corresponding character in tableo -
+characters which are not found in tablei remain unchanged. The default
+input table is XRANGE('00'x,'ff'x) and the default output table is the
+null string. The output table is padded or truncated in order to make
+it the same length as the input table, the default pad character being
+a blank.
+Examples:
+   translate('abc123DEF')              == 'ABC123DEF'
+   translate('abbc','&','b')           == 'a&&c'
+   translate('abcdef','12','ec')       == 'ab2d1f'
+   translate('abcdef','12','abcd','.') == '12..ef'
+   translate('4123','abcd','1234')     == 'dabc'
+
+TRUNC(number[,length])
+
+The number is rounded as necessary according to NUMERIC DIGITS, and then
+truncated or padded so that the result has exactly "length" digits
+after the decimal point. If the length is zero or is omitted, then the
+result is an integer with no decimal point. The result will never be in
+exponential form.
+
+Examples:
+   trunc(12.6)      == 12
+   trunc(345e-2,1)  == 3.4
+   trunc(26,5)      == 26.00000
+
+VALUE(s[,[newvalue][,selector]])
+
+s is treated as a symbol, and if it has a value, that value is returned.
+If s is not a valid symbol then an error results. Otherwise the result
+is just as for a symbol appearing in a program. For compound symbols,
+substitution occurs as normal, except that string constants and
+expressions (types 4 and 5 in the description of symbols above) are not
+allowed.
+
+If the newvalue parameter is provided, then this value is assigned to
+the symbol described above.  The symbol's old value will be returned.
+In this case the symbol must not be a constant symbol or an error will
+result.
+
+If the selector is provided, then this indicates an alternative
+variable pool to use instead of the REXX variable pool (except that the
+word "REXX" is accepted as a valid name for the usual REXX variable
+pool).  The only selector recognised by REXX/imc is the word
+"ENVIRONMENT", which allows the value() function to examine and alter
+environment variables.  Note that the names and values of environment
+variables may not contain NUL characters.
+
+Example: the following program
+
+   a=1; b='*'
+   c.a=1; c.b=2
+   say value("a") value("c.a") value("c.b") value("d.b",6)
+   say value("d.*")
+   
+will output "1 1 2 D.*" then give an error, because "*" is not allowed
+as a component of a symbol (however "b" is, even if b="*").  The value
+of d.b after executing these lines will be 6.
+
+The instructions
+
+   a=value("FOO","ENVIRONMENT")
+   call value "FOO","bar","ENVIRONMENT"
+
+are similar to the instructions
+
+   a=getenv("FOO")
+   call putenv "FOO=bar"
+
+respectively.
+
+VERIFY(string,reference[,[option][,position]])
+
+This verifies that the string contains only characters from reference
+and returns 0 if this is true. Otherwise the result is the position of
+the first character in string which is not in reference.
+   If the option is specified, its first letter must be either 'N'
+(nomatch) or 'M' (match).  The action for 'N' is as described above.
+If 'M' is specified then the result is the position of the first
+character which matches a character from the reference, and 0 if no
+character from reference was found in the string.
+   If the position is given, the verification starts from this position
+in the string instead of from the beginning.
+
+Examples:
+   verify('123','1234567890')           = 0
+   verify('1Z3','1234567890')           = 2
+   verify('AB4T','1234567890','M')      = 3
+   verify('1P3Q4','1234567890',,3)      = 4
+
+WORD(string,position)
+
+This function returns the "position"th blank-delimited word in string,
+and is identical to SUBWORD(string,position,1). If there are not
+"position" words in string then the empty string is returned.
+
+WORDINDEX(string,position)
+
+This function returns the character position of the "position"th
+blank-delimited word in string, or 0 if there are not that many words
+in string.
+
+WORDLENGTH(string,position)
+
+This function returns the length of the "position"th blank-delimited
+word in string, and is identical to LENGTH(WORD(string,position)). If
+there are not that many words in string then 0 is returned.
+
+WORDPOS(phrase,string[,position])
+
+This is a word-oriented version of POS. It returns the word number of
+the first occurrence of the phrase in the string. If "position" is
+specified, the the search starts at the specified word number instead
+of the beginning.  If phrase contains no words, then 0 is returned.
+   phrase is a sequence of blank-delimited words which must be present
+in sequence in the string and match exactly, except that multiple
+blanks between words are treated as single blanks, and leading and
+trailing blanks are ignored.
+   This function replaces the FIND function from VMREXX.
+
+WORDS(string)
+
+This function returns the number of blank-delimited words in the string.
+
+XRANGE([a[,b]])
+
+This function returns a range of ascii characters in a string. If they
+are supplied, a and b must be single characters. The defualt values for
+a and b are '00'x and 'ff'x respectively. The result is a string
+consisting of ascii characters in sequence starting with a and ending
+with b. If a>b then a string of (b-a+257) characters is returned,
+starting at a and ending at b, wrapping around from 'ff'x to '00'x.
+
+UNIX Specific Functions:
+
+The following functions are built into this version of REXX, although
+they are not standard REXX functions. Most of these functions appear in
+the literature.
+
+NOTE: many of these functions which accept string arguments will ignore
+      any characters after (and including) a "00"x character.
+
+CHDIR(directory)
+
+This function attempts to change to the named directory, and returns an
+error code. The code is zero if no error occurred, otherwise the message
+corresponding to the code can be obtained with the ERRORTEXT function
+by first adding 100 to the number.
+
+GETCWD()
+
+The current working directory name is returned. If an error occurs while
+attempting to name the current directory then an error message is
+returned instead. The first character of the result is a `/' if and only
+if no error occurred.
+
+GETENV(name)
+
+If the current environment contains the named variable, then its value is
+returned. Otherwise an empty string is returned.
+
+This call is equivalent to VALUE(name,,"ENVIRONMENT"), and it may be
+deleted in a future release.
+
+PUTENV(string)
+
+The string must be of the form "variable=value". The specified
+environment variable is set to the given value and zero is returned.
+If an error occurs then 1 is returned.
+
+This call is similar to VALUE(variable,value,"ENVIRONMENT"), and it may
+be deleted in a future release.
+
+SYSTEM(s)
+
+This function takes the string s, passes it to a bourne shell, and
+returns as a result all text produced by that shell command on the
+standard output. This function has a side effect, namely that the
+variable `rc' is set to the exit status of the shell, or -1 if the shell
+couldn't be invoked for some reason.  This may in turn cause the
+condition "ERROR" or "FAILURE" to be trapped (see the SIGNAL ON and
+CALL ON instructions).  Except in the case that a "SIGNAL" occurs,
+there will always be a result whatever the return code, but it may be
+the null string if an error occurred (or if the command produced no
+output).
+
+USERID()
+
+The result is the login-name corresponding to the owner of the
+interpreter process. If that cannot be determined for some reason, an
+empty string is returned.
+
+Mathematical Functions
+
+The following functions are supplied as an external function package
+called rxmathfn.  Either a REXX program or a dynamically-loadable
+object may be used (see the section on function invocation).
+
+All the functions described below give results according to the current
+setting of NUMERIC DIGITS, but they use floating-point maths so a maximum
+of about 16 digits of accuracy may be obtained.  The exception is the
+square root function, which can always give the required number of
+digits of accuracy (subject to machine resources).
+
+ACOS(x)      the arc-cosine of x in radians (0<=acos(x)<=pi)
+ASIN(x)      the arc-sine of x in radians (-pi/2<=asin(x)<=pi/2)
+ATAN(x)      the arc-tangent of x in radians (-pi/2<=atan(x)<=pi/2)
+COS(x)       the cosine of x radians
+EXP(x)       the exponential of x (2.718281... to the power x)
+LN(x)        the natural logarithm of x (x>0)
+SIN(x)       the sine of x radians
+SQRT(x)      the square root of x (x>=0) [arbitrary precision possible]
+TAN(x)       the tangent of x radians (x <> pi/2)
+TOPOWER(x,y) x to the power y (like x**y except non-integer values
+             of y are allowed).  If y=0 then the result is 1.  If x=0
+             and y>0 then the result is 0.  Otherwise the result is
+             exp(y*ln(x)).
+_________________________________________________________________________
+
+Instructions
+
+Comments are supported, and may appear anywhere that a space can, with
+the exception that comments are not allowed within a multi-character
+operator (e.g. ** or ==).  They can occupy any number of lines and may
+be nested. 
+/* This is a comment.  It is started by /* and ended by */.  */
+
+The star and slash characters of the comment delimiters must not be
+separated by whitespace.
+
+Each command must usually appear all on one line. The exception to this
+rule is when a line ends with a comma. In this instance, the comma is
+deleted and the next line appended with a space. Multiple lines may be
+appended in this way. Thus
+   say,          /* spaces and/or comments may follow the comma */
+   "this is",
+   "a test"
+will actually be interpreted as
+   say "this is" "a test"
+and will result in
+   this is a test
+
+Note that quotation marks must always be closed before the end of a line.
+For example, the following will cause an error:
+   say "this is,
+   a test"
+
+Instructions may be separated by semicolons or by the ends of lines.
+
+The following REXX commands are currently implemented. They are displayed
+in upper case, but may be typed in mixed case.
+
+Square brackets indicate optional parts of constructions.
+_________________________________________________________________________
+
+NOP
+
+This does nothing. It is provided for situations such as
+IF xxxx THEN NOP ELSE yyyy.
+_________________________________________________________________________
+
+SAY [expression]
+
+The expression is evaluated and displayed on the standard output,
+followed by a newline character. If no expression is supplied then just
+the newline character is output.
+
+LOCAL: The command:  SAYN expression
+       evaluates the expression and displays it without a newline
+       character.  Note that a similar effect can be obtained with
+       the function call charout, though the output may have to be
+       flushed by calling charout a second time with no parameters.
+_________________________________________________________________________
+
+symbol=value
+
+If `symbol' is a simple or compound symbol then it is assigned the value
+`value', so that assignment in REXX has the usual meaning. A compound
+symbol is subject to the usual substitution of qualifiers.
+
+If `symbol' is a stem, then all possible compound symbols which start
+with the given stem are assigned the value `value'.
+
+Variables are allowed to have the same names as REXX keywords, with the
+exception of some keywords within particular commands (e.g. "until" in a
+DO construction). The following rule is applied, in order to distinguish
+between an assignment and any other command: if the first word in the
+line is followed by an `=' (after optional spaces), then it is an
+assignment. This does not apply, however, to constant symbols, which can
+not be assigned to.
+_________________________________________________________________________
+
+DROP symbol [symbol,...]
+
+The DROP command un-assigns each symbol named after the DROP keyword.
+Simple or compound symbols or stems may be dropped. If the symbol is a
+stem, then all compound symbols starting with that stem are dropped.
+
+If a variable has been passed to a procedure with the PROCEDURE EXPOSE
+construction, then the variable in the calling procedure will be dropped
+also. If a dropped symbol is subsequently assigned a value, then the
+variable will also be assigned that value in the calling procedure.
+
+It is not an error to DROP a non-existent symbol, or to DROP a symbol
+twice.
+
+NOTE: Even if a compound variable is dropped, its value will always be
+      undefined immediately after the drop.  For example,
+         stem.="Some value"
+         drop stem.6
+         say stem.5 stem.6 stem.7
+      makes stem.6 undefined and says "Some value STEM.6 Some value".
+_________________________________________________________________________
+
+EXIT [expression]
+
+The EXIT instruction returns control from a program to its most recent
+external caller. This will either be a rexx external call (that is,
+`CALL name' or `name()' where name is the name of the REXX program rather
+than an internal or builtin function name) or a UNIX command, if the
+program was not called by another REXX program. All the current DO,
+SELECT, INTERPRET and internal call structures are terminated, and
+control resumes at the point of the most recent external call. An
+expression may follow the EXIT statement; this is passed back to the
+caller in the same way as in the RETURN statement. If control is returned
+back to UNIX, then the expression must be an integer if it is supplied,
+and it is used as the exit value of the interpreter. If no value is
+supplied then the exit code will be zero.
+
+Note that reching the end of a program is the same as executing "EXIT".
+In other words, reaching the end of a program terminates all internal
+function calls.
+_________________________________________________________________________
+
+NUMERIC parameter value
+
+NUMERIC DIGITS n
+NUMERIC FUZZ n
+NUMERIC FORM   SCIENTIFIC
+             | ENGINEERING
+             | "string constant"
+             | [VALUE] expression
+
+The expression evaluator uses arbitrary length arithmetic for numeric
+operations. The precision to which operations are carried out by the
+evaluator may be altered using the NUMERIC DIGITS command, and is
+initially 9. The number supplied will be the number of digits kept after
+each operation, not including the decimal point, or leading zeros, which
+are dropped by all arithmetic operations. The upper limit for NUMERIC
+DIGITS is about 10000 (defined in const.h).  Note that a single
+multiplication or division can take many minutes at this precision.
+
+NUMERIC FUZZ is initially zero and is set to zero by each NUMERIC DIGITS
+command. It specifies a temporary reduction in the precision of
+arithmetic when doing comparisons (remember, for all numeric comparisons,
+the two operands are subtracted and the result is compared with zero. It
+is the precision of the subtraction which is affected by NUMERIC FUZZ).
+The upper limit for NUMERIC FUZZ is clearly one less than the current
+value of NUMERIC DIGITS.
+
+NUMERIC FORM is used to set the form of exponents to either `scientific'
+mode or `engineering' mode. When an exponent is used, in the scientific
+mode there is always precisely one digit, which is non-zero, before the
+decimal point. In engineering mode, there are up to three digits before
+the decimal point, and the exponent is always a multiple of three.
+   If an expression is used, it must evaluate to "SCIENTIFIC" or
+"ENGINEERING" in upper case. If the expression does not start with a
+symbol or string constant, then the keyword VALUE may be omitted.
+
+The NUMERIC settings are saved across function calls, and restored on
+return from a function, so a function may set the precision, etc. that
+it needs without affecting the caller.  Moreover, the settings will be
+restored to their default settings just after entering any external
+REXX procedure.
+_________________________________________________________________________
+
+DO
+
+There are two uses of DO:
+
+1.  DO
+    ...commands...
+    END
+
+  This is a compound statement, i.e. the DO and END are wrapped around
+  the block of commands so that they appear like one statement and may
+  be used in IF constructs.
+
+2.  DO [ symbol=start  [TO  finish]  ]     [WHILE expression_w]
+       [               [BY  step  ]  ]
+       [               [FOR count ]  ]     [UNTIL expression_u]
+
+       [ expression_c                ]
+       [FOREVER                      ]
+
+    ...commands...
+    
+    END [symbol]
+
+    where start, finish, step, count and the expressions are numerical
+    expressions. Expression_c and count are required to be non-negative
+    integers.
+
+  This is a repetitive command. If `symbol' is present in the DO
+  statement, then:
+
+    a. `symbol' may be any simple or compound symbol
+    b. the symbol name may appear after the END statement; if it does,
+       then it must be the same one as after the DO.  The DO symbol and
+       the END symbol are compared literally, without substituting any
+       components in the tail of a compound symbol, but the comparison
+       is case insensitive.
+    c. the value of start is assigned to the symbol before the loop is
+       entered.
+    d. if [TO finish] is present, then the loop is not executed after the
+       control variable (named by the symbol) passes the finish value.
+       If it is not present, then the loop may potentially be executed
+       for ever (unless a FOR clause is present).
+    e. if [BY step] is present, then the variable is incremented by step
+       after each pass. Otherwise the variable is incremented by 1.
+    f. If [FOR count] is present, then the loop is executed at most
+       count times.
+    g. The TO, FOR and BY clauses may be specified in any order. (Note:
+       each should be specified at most once, but specifying one or more
+       of these twice will not cause an error. The last one encountered
+       is the one which is used).
+  If `symbol' is not present, then nothing must follow the END.
+
+  If the expression_c is specified, then the loop is executed this number
+  of times (unless terminated by some other condition).  Note that
+  expression_c must not start with a symbol followed by '=', because it
+  would then be taken to be a `symbol' as above.  This may be prevented
+  by enclosing the expression in parentheses.
+
+  If a WHILE clause is present, then expression_w is evaluated before
+  each pass and the loop is terminated if the result is false.
+  
+  If an UNTIL clause is present, then expression_u is evaluated after
+  each pass and the loop is terminated if the result is true.
+  
+  A `DO FOREVER' instruction creates a loop which never terminates
+  (unless a LEAVE instruction is encountered).
+  
+  Note that if expression_w is false or if the variable clause needs no
+  repetition, or if count or expression_c is zero, then the body of the
+  loop will not be executed at all.
+
+An END must appear for each DO construct, and if labelled with a symbol,
+must have the correct symbol.
+
+NOTE: The name of any variable specified at the DO statement is
+      evaluated again each time it is incremented at the end of a
+      pass through the loop.  This means, for example, that in
+      "DO a.i=1 TO 10", the name of the variable which is incremented
+      depends on the current value of i.  (Altering the value of i is,
+      of course, not highly recommended).
+
+Example: The code
+
+        do name=expri to exprt by exprb for exprf while exprw (or until expru)
+           ... instructions ...
+        end
+
+will be executed as if it were written thus:
+
+        $tempi = expri       /* variables staring with $ are */
+        $tempt = exprt       /* invisible to the rest of the */
+        $tempb = exprb       /* program. */
+        $tempf = exprf
+        name = $tempi + 0
+
+ $loop: if name > $tempt then goto $end    /* "goto" is a pseudo-op */
+        if $tempf = 0 then goto $end       /* meaning the obvious   */
+        if \exprw then goto $end
+
+        ... instructions ...
+
+ $iter: if expru then goto $end            /* "iterate" will come here */
+        name = name + $tempb
+        $tempf = $tempf - 1
+        goto $loop
+ $end:                                     /* "leave" will come here */
+
+(If any of the constructs in the original code are left out, the
+coresponding lines will be left out of this example).
+_________________________________________________________________________
+
+LEAVE [symbol]
+
+If a symbol name is not specified, then LEAVE leaves the innermost
+repetitive DO statement by jumping to the statement after the END
+statement for that loop. If a symbol name is specified, then LEAVE
+leaves the innermost loop with that symbol as control (i.e. where the
+DO statement specified that symbol) - this may involve leaving several
+inner loops.  The specified symbol must match that in the DO
+instruction literally, except that case is ignored.
+  The LEAVE statement will not return from procedures or functions.
+  If there is no suitable loop to leave within the current function or
+procedure call, then an error results.
+
+NOTE: LEAVE will not exit from a string being interpreted: it is an
+      error to use LEAVE within INTERPRET unless the corresponding DO
+      occurs there as well.
+_________________________________________________________________________
+
+ITERATE [symbol]
+
+This instruction is similar to LEAVE, but instead of leaving the loop
+it jumps to execute the END statement and possibly continue with another
+iteration around the loop.  The same NOTE applies.
+_________________________________________________________________________
+
+IF expression [;] THEN [;] instruction [ ; ELSE [;] instruction]
+
+This construction has the obvious meaning. Note that the THEN and ELSE
+must be followed by single instructions, but the DO-END or SELECT-END
+(qv) and even IF-THEN-ELSE constructions count as single instructions
+for this purpose.
+
+A semicolon or line-end may optionally appear between the expression and
+the THEN, but one must appear before ELSE, as above.
+
+IF statements may be nested, but note that each ELSE statement
+corresponds to the most recent IF statement without an ELSE. If a null
+THEN or ELSE clause is needed, the NOP instruction must be used (as a
+null statement is just ignored by REXX).
+
+BUG: There is at present no way to detect incorrectly positioned ELSE
+     statements. If an ELSE is detected during program interpretation,
+     this will just cause the interpreter to skip the following statement
+     and will not be an error. This bug also prevents the interpreter
+     from flagging a construction such as "if expr then else ..." since
+     in that case the "else" will be considered to be the statement to
+     execute when expr is true.
+_________________________________________________________________________
+
+SELECT [expression]
+   WHEN expression THEN instruction
+   WHEN expression THEN instruction
+   ...
+   [OTHERWISE instructions]
+END [SELECT]
+
+If an expression is supplied after SELECT, then this construction is like
+a Pascal or Modula `CASE' construction. The expression is compared with
+each of the other expressions in turn, until one is found that matches
+(using the `=' form of equality). If a match is found, then the
+corresponding instruction is executed. If a match is not found, then an
+OTHERWISE clause must be specified, or else an error is reported. The
+instructions after OTHERWISE will be executed.
+  If an expression is not specified after SELECT, then the construction
+is a list of guarded commands - that is, each expression is evaluated
+until a true one is found, and the corresponding action is taken. Again,
+if no expression is true and there is no OTHERWISE then an error is
+reported.
+  The word SELECT may be placed after the closing END but is optional.
+Adding the word SELECT allows easier detection of missing ENDs.
+  It is an error for the word WHEN or OTHERWISE to appear anywhere except
+immediately inside a SELECT construction.
+  Precisely one instruction is required after each WHEN, so NOP should be
+used if no action is required. NOP need not be used after OTHERWISE.
+  If multiple instructions are required to follow each WHEN condition,
+then they should be contained in a DO ... END block.  Multiple
+instructions may follow the OTHERWISE keyword.
+
+LOCAL: The optional expression following the SELECT keyword, and the
+       optional SELECT following the END keyword are features of PL/1
+       and not of standard REXX.
+_________________________________________________________________________
+
+PARSE [UPPER] string [template] (also: ARG [template], PULL [template])
+
+[PARSE [UPPER]] ARG template
+[PARSE [UPPER]] PULL [template]
+PARSE [UPPER] LINEIN [template]
+PARSE [UPPER] SOURCE template
+PARSE [UPPER] VERSION template
+PARSE [UPPER] NUMERIC template
+PARSE [UPPER] VAR symbol template
+PARSE [UPPER] VALUE expression WITH template
+
+This command is a powerful parser which divides the operand up as
+specified by the `template'. If the UPPER keyword is specified, then the
+operand is uppercased before parsing.
+
+The "ARG template" and "PULL template" commands are short forms of
+"PARSE UPPER ARG template" and "PARSE UPPER PULL template" respectively.
+
+The possible operands are as follows:
+
+ARG   - the command-line arguments, or the arguments passed by a function
+        or procedure call, are parsed.
+PULL  - the top value on the stack, if one exists, is parsed; otherwise
+        a line of input is read from the standard input and parsed as
+        described for LINEIN below.  See QUEUE/PUSH for details about
+        the stack.
+LINEIN- A line is read directly from stdin.  The stack is not affected
+        by this instruction.  In general, PULL is recommended in
+        preference to LINEIN.
+
+        If a line cannot be read because of an I/O error or EOF
+        condition, then the NOTREADY condition will be raised and an
+        empty string will be parsed.  The NOTREADY condition is ignored
+        unless trapped by SIGNAL ON or CALL ON, in which case it is
+        difficult to tell the difference between an empty input line
+        and an I/O error.  However, the STREAM() function may be
+        used to examine the most recent I/O error on stream "stdin".
+
+        NOTE: If the program is interrupted (via ^C) while input is being
+              read, then the characters which have been read in may be
+              lost, but the remainder of a partially-input line will
+              remain to be read again.
+
+SOURCE- An implementation-dependent string representing the `source' of
+        the program is parsed.
+        In this implementation, the string contains five words:
+         1. the system under which the interpreter runs (always UNIX)
+         2. the way in which the program was called (one of COMMAND,
+            FUNCTION or SUBROUTINE, depending whether the program was
+            invoked by a command shell or as a function or subroutine)
+         3. the name of the file containing the program, with the full
+            path name (unless no directory was specified and getwd could
+            not name the current directory)
+         4. the name by which the program was called (always without a
+            path name).
+         5. the environment name which was current when the program
+            started up
+VERSION-A string representing the version of the REXX interpreter is
+        parsed. This contains five words:
+         1. A word describing the language, of which the first four
+            letters are always REXX. In this implementation the word is
+            REXX/imc.
+         2. A string representing the version number (e.g. 1.0)
+         3,4,5. The date on which the interpreter was compiled, in the
+            same format as the DATE() function (e.g. 18 May 1990).
+NUMERIC-The current NUMERIC settings are parsed.  There are three words
+        in the string to be parsed: NUMERIC DIGITS, NUMERIC FUZZ and
+        NUMERIC FORM respectively.
+VAR   - The symbol specified is evaluated, and if it represents
+        a currently defined variable, its value is substituted. The
+        result is then parsed.
+VALUE - The expression between "VALUE" and "WITH" is evaluated and then
+        parsed (note that WITH is a reserved keyword in this instruction)
+
+If no template is supplied, the information to be parsed is collected and
+then thrown away.
+
+The "ARG" and "VALUE" forms may parse more than one string at once. This
+comes about with "ARG" when a function or procedure call (note - not a
+command line call) passes more than one argument, or with "VALUE" when
+the expression contains comma separators. In this case, the parse
+template may contain commas. The part of the template before the first
+comma applies to the first operand string, that part between the first
+and second commas applies to the second string, and so on. E.g.
+
+ PARSE VALUE 43 56,5*9,hello,there WITH template1,template2,
+ 
+Here template1 applies to "43 56"; template2 applies to "5*9" and no
+other parsing takes place. Note that there does not have to be a template
+for each operand string, and also that there does not have to be an
+operand string for each template (in this case the extra templates will
+be applied to the empty string).
+
+LOCAL: Parsing multiple strings with the PARSE VALUE construction is a
+       local extension.
+
+A parse template obeys the following grammar. A symbol in brackets
+indicates that that symbol may be optionally present. A character in
+single quotes indicates that that character should be typed literally.
+A symbol in double quotes is a terminal symbol, indicating the
+appropriate REXX entity should be present.
+
+ template        -> [firstPosition] assignments [assignments]
+ assignments     -> [nextPosition] varlist [stopPosition]
+ varlist         -> varname [varlist]
+ varname         ->   "non-constant symbol"
+                    | '.'
+ firstPosition   -> position
+ nextPosition    -> position [nextPosition]
+ stopPosition    -> position
+ position        ->   searchPosition
+                    | absPosition
+                    | relPosition
+                    | '(' "expression" ')'
+ searchPosition  -> "string constant"
+ absPosition     ->   "integer"
+                    | '=' numexpr
+ relPosition     ->   '+' numexpr
+                    | '-' numexpr
+ numexpr         ->   "integer"
+                    | '(' "integer expression" ')'
+
+Each position symbol in this grammar indicates a column number to the
+parser. Positions are translated to column numbers (numbered from 1 up to
+l+1, where l is the length of the string being parsed) in the following
+way. Note that the absPosition indicator "1" is implicitly present
+before and after any parse template.
+
+absPosition:    gives the column number directly, except that numbers not
+                between 1 and l+1 are translated into 1 or l+1 as
+                appropriate.
+searchPosition: searches for the given string constant in the string
+                being parsed, starting from the most recent column number
+                Usually, two column numbers result: the column number of
+                the first character which matched, and that of the first
+                character after the matching string. The latter number is
+                suppressed if the next position indicator (if any) is a
+                `relPosition'. If the string is not found, then the
+                single column number l+1 results.
+"expression":   evaluates the expression and then treats it as the string
+                constant of a searchPosition
+relPosition:    The given positive or negative number is added to the
+                previous column number to give the result. As for an
+                absolute position, numbers which are out of range are
+                translated into 1 or l+1 as appropriate.
+
+For example, given the string "hello, world, hello!" and the position
+indicators 1 "ello" +4 ! 5 -3 'x' -2 1, the resulting column numbers
+would be:
+  1  (the given number)
+  2  (the first character of "ello" - the second number is suppressed)
+  6  (+4 characters from the previous position)
+ 20}{(the first character of "!")
+ 21}{(the first character after "!")
+  5  (the given number)
+  2  (-3 characters from 5)
+ 21  (the end of the string, since "x" is not found)
+ 19  (-2 characters from 21)
+  1  (the given number)
+
+The position indicators are translated into column numbers independent
+of the varlist, except in one case described below. Thus the parse
+template may be reduced by the above rules into a sequence of column
+numbers and varlists. Taking into account the rule that each template is
+implicitly prefixed and suffixed by the column number "1", each varlist
+thus occurs between two column numbers. Each varlist is treated
+separately, as follows:
+
+Denote the varlist, together with the column numbers immediately before
+and after the varlist, as m v1 v2 ... vk n. If m<n, or if m=n and
+n resulted from a search, then there exists a well-defined substring s of
+the string being parsed, which starts at column m and is of length n-m.
+(this string ends at, but does not include, column n). Otherwise, let s
+be that substring which starts at column m and continues to the end of
+the string being parsed. Then the string s is divided between the
+variables of the varlist by assigning the blank-delimited tokens to v1,
+v2, ... in order. If there are more varnames in the varlist than there
+are blank-delimited tokens, then the extra varnames are assigned with the
+empty string. The tokens assigned to varnames v1, v2, ... , v(k-1) will
+contain no leading or trailing blanks, but the token assigned to vk will
+contain all blanks which occur after v(k-1), except for the one blank
+immediately after v(k-1).
+
+Each varname is either a symbol name or a dot. If the varname is a dot,
+then the token which would be assigned to it is thrown away. Otherwise
+the token is assigned to it in the usual way, just as if there had been
+an instruction: symbol = token
+
+NOTE: Most versions of REXX allow only a symbol name between parentheses
+      where this version allows an arbitrary expression.  However, this
+      is not well tested and some bugs may remain.  In any case, if
+      the arbitrary expression contains a function call which itself
+      uses PARSE, this may overwrite the original string being parsed.
+
+The one case in which the presence of a varlist may affect the
+translation from position indicators to column numbers is when one or
+more of the symbols mentioned in an "expression" is also stated in a
+varlist. Hence:
+
+PARSE VALUE "s/this/that" WITH 2 delim +1 first (delim) second
+
+will assign "/" to delim, "this" to first and "that" to second. This is
+because the variable delim is assigned as soon as the "+1" is reached.
+This provides a way to provide commands (such as locate commands) which
+take any string parameter and also some options. It allows any delimiter
+to separate the parameter from the options.
+However,
+
+PARSE VALUE "s / this/that" WITH . delim first (delim) second
+
+will not have the same effect, since delim and first are not assigned
+until after the expression (delim) has been searched for.
+
+Note that the symbols are assigned in order from left to right, so
+
+PARSE VALUE "1 2 3" WITH a x.a y.a
+
+will assign 1 to a, then 2 to x.1, then 3 to y.1
+
+Other Examples:
+
+PARSE VALUE "Hello there ! etc.." WITH a b ! . "c" c
+
+will assign "Hello" to a and "there " to b, then throw away " et" and
+assign ".." to c.
+
+PARSE VALUE "123456789" WITH a +4 b 6 c
+
+will assign "1234" to a, "5" to b, and "6789" to c.
+
+PARSE VALUE "   multiple   spaces   between   words" WITH a b c
+
+will assign "multiple" to a, "spaces" to b and "  between   words" to c.
+
+PARSE VALUE "a  b  c  d  e  f" WITH "b" a b "e"
+
+will assign "c" to a and " d  " to b.
+
+PARSE VALUE "hello-there" WITH a "-" b -1 c +1
+
+This assigns "hello" to a, "-there" to b and "o" to c. 
+_________________________________________________________________________
+
+QUEUE [expression] ; PUSH  [expression]
+
+These instructions place the specified single expression on to the stack.
+If the expression is omitted, then the null string will be used.
+If QUEUE is used, the expression will be added in FIFO order (it will be
+retrieved after all currently existing stack items). If PUSH is used, the
+expression will be added in LIFO order (it will be retrieved before all
+currently existing stack items).
+
+Other programs may communicate with the REXX stack to provide data for
+or retrieve data from a REXX program. See the separate section on the
+REXX stack for details.
+_________________________________________________________________________
+
+CALL name [arg][,[arg],...]]
+
+The CALL command evaluates its arguments, if any, and passes them to the
+named procedure.  The name may be either a symbol or a string constant.
+If it is a symbol, then it will be translated to upper case before
+use.
+
+The procedure may or may not return a result.  If it does return a
+result, then this is assigned to the variable RESULT, otherwise this
+variable is dropped - that is, it will no longer have a value.
+
+See the section on function or subroutine invocation for more details.
+
+CALL ON  condition [NAME symbol]
+CALL OFF condition
+
+These call instructions provide error trapping.  The possible
+conditions which may be trapped are as follows:
+
+ FAILURE:  A command to the environment returned a "failure" code.
+           Usually this means a negative return code, but see the
+           section on commands to the environment.
+ ERROR:    A command to the environment returned an "error" code.
+           This usually means a non-zero return code.  Note that if
+           "failures" are not being trapped, then "error" will catch
+           failures also.
+ NOTREADY: A function from the REXX I/O model (see the separate section)
+           was unsuccessful because, for example, an input function
+           encountered an end-of-file condition.
+ HALT:     The user has attempted to halt the program, for example by
+           typing Control-C.  Signals SIGHUP and SIGTERM also raise the
+           HALT condition.
+
+(These are the same conditions as for SIGNAL ON, except that the two
+conditions SYNTAX and NOVALUE may not be trapped by CALL ON).
+
+The CALL ON instruction turns on condition handling.  Whenever the
+specified condition occurs, a CALL is made to a handling routine.  If
+the NAME keyword is specified, then the following symbol is taken as
+the name of the handling routine.  Otherwise the handling routine has
+the same name as the condition.  On return from the call, execution
+proceeds normally.  The RESULT variable will not be affected by the
+call.  During the handling routine, the condition handling will be
+set to "DELAY".  For the FAILURE, ERROR and NOTREADY conditions, this
+means that further conditions will be ignored until the handling routine
+returns or until handling is explicitly turned on or off.  For the HALT
+condition, the program will continue executing but the halt signal will
+be remembered until the handling routine returns or until handling is
+explicitly turned on or off.  At that time the signal will be handled
+in an appropriate way.
+
+Condition handling with the CALL ON instruction always occurs at clause
+boundaries.  When a condition occurs, it is delayed until the currently
+executing clause has completed, and then the condition handler is
+called.
+
+At any time after the handling routine is called and before it returns,
+the CONDITION() builtin function may be used to retrieve information
+about the condition which was trapped.  The information provided by
+this function is saved across function calls.  If a further condition
+is handled while the handler is still active, this will not affect the
+information which may be provided to the current handler.
+
+When a condition handler is activated, the special variable SIGL is set
+to the line number of the instruction in which the condition was
+raised.  Also, for conditions ERROR and FAILURE, the special variable
+RC will hold the return code of the command which caused the condition
+to be raised.
+
+Condition handling will always remain on until turned off with either
+"CALL OFF condition" or "SIGNAL OFF condition".  If an external routine
+is called, condition handling will be turned off temporarily until the
+external routine finishes or turns condition handling on.
+
+The status of condition handling is saved across function calls.  If a
+subroutine uses a "CALL ON/OFF" or "SIGNAL ON/OFF" instruction, the
+condition handling within the current routine will be unaffected.
+
+A CALL OFF instructions cancels condition handling for a particular
+condition.  If handling is turned off for ERROR, FAILURE or NOTREADY,
+then the condition will be ignored whenever it occurs.  If handling is
+turned off for HALT then the program will halt when the condition
+occurs.
+
+NOTE: Because calling the handling routine affects the special variable
+      SIGL, this variable can no longer be trusted to remain constant
+      when CALL ON HALT is in effect, since this condition can occur at
+      any time without notice.
+
+BUG:  The routine named in a CALL ON instruction must be an internal
+      routine.  Built-in or external routines are not allowed.
+_________________________________________________________________________
+
+RETURN [value]
+
+This statement returns control to the most recent caller, optionally
+returning a value to the caller. All current DO and SELECT structures
+are exited and, if appropriate, the current variables are deleted and
+the caller's variables are reinstated.
+
+If the caller was a function call or a CALL statement, the value may be
+any string which is passed to the caller in the manner described above.
+If the caller was a function call, the return value must be given or an
+error results.  On return from a condition handler, the result is
+ignored.
+
+If the caller was a shell (that is, no CALL statement or function call
+is currently active), then the RETURN statement exits from the REXX
+interpreter. The return value need not be given, but if it is specified
+it must be an integer, which is returned to the shell as an exit status.
+_________________________________________________________________________
+
+PROCEDURE
+PROCEDURE EXPOSE var1 [var2 ...]
+PROCEDURE HIDE var1 [var2 ...]    (LOCAL)
+
+The PROCEDURE command is used in an internal function or procedure to
+hide the caller's variables.
+
+The PROCEDURE command on its own hides all the caller's variables and
+makes sure that on return all the current function's variables are
+erased. On return from a function containing this instruction, the
+caller's old variables are reinstated when the current function's have
+been deleted.
+
+The PROCEDURE EXPOSE varlist command is like the form with no arguments
+except that all the named variables are left visible. These variables
+will all remain when the RETURN statement deletes all the other variables
+from the current function. If any of the named variables are not defined,
+then they will remain undefined until they are assigned a value. This
+value will then be carried back to the calling procedure.
+
+It is not an error to specify a symbol more than once; this will have
+the same effect as specifying it just once.
+
+Simple symbols, stems or compound symbols may be exposed.  If a stem is
+named, then all possible compound symbols starting with that stem will
+be exposed.
+
+BUG: It is not possible to expose a stem and one of its compound
+     symbols at the same time.  If a stem is named and one of its
+     compound symbols appears later, then the compound symbol has in
+     effect already been exposed and so the expected results will
+     occur.  However, if a stem appears after one of its compound
+     variables, the stem will be ignored without a warning.
+
+Any symbol(s) in the list following PROCEDURE EXPOSE may be enclosed in
+parentheses.  In such cases the value of the symbol is used as a list
+of extra symbols to expose.  For example, if the assignment:
+     list = "var1 var2 stem. misc.3"
+occurred in the calling program, then the instruction:
+     procedure expose test1 (list) test2
+will expose the following symbols (in this order):
+     test1 list var1 var2 stem. misc.3 test2
+Notice that the symbol inside the parentheses is itself exposed before
+its value is obtained.
+
+LOCAL: The PROCEDURE HIDE varlist command hides only the named variables,
+      leaving the rest visible. On return the hidden variables are
+      deleted, leaving all the others. The action of PROCEDURE HIDE list
+      is identical to that of
+      PROCEDURE EXPOSE <every existing variable except those named>.
+      (in fact what happens is that all existing symbols are exposed and
+      then the named symbols are deleted from the new variable table.
+      This command is therefore quite inefficient and should be used
+      sparingly).
+      The PROCEDURE HIDE statement may not hide individual compound
+      variables. Only stems and simple symbols should be specified,
+      otherwise a syntax error will result.
+NOTE: This means that variables which are undefined when the
+      PROCEDURE HIDE statement is executed will be deleted on return from
+      the current function. However, if new compound variables are 
+      defined having a stem in common with some compound variables which
+      already exist, then the new compound variables will not be deleted
+      on return.
+
+NOTE: As in standard REXX, the order in which the symbols are named can
+      have an effect. For example, if i=5 then
+         procedure expose i a.i
+      will expose i and the compound symbol a.5, but
+         procedure expose a.i i
+      will expose the compound symbol a.I and i. This is because the
+      names are processed from left to right, and in the latter case the
+      symbol i is not visible when the name a.i is encountered.
+
+The PROCEDURE command will almost invariably be at the beginning of a
+function or procedure. It may be used in the middle rather than at the
+beginning, but this is not recommended. In fact the ANSI standard
+states that PROCEDURE must be the first instruction of a subroutine, if
+it is present. In any case, an error will result if it is used within
+an INTERPRET, or a DO, or some other control structure.
+
+LOCAL: If OPTIONS 'EXPOSE' (qv) is in effect then the PROCEDURE
+       instruction will be allowed at the start of a program which is
+       called as an external subroutine or function.  This allows
+       variables from the caller (which would normally be hidden) to be
+       exposed.  The instruction does not have to be the first in the
+       program but it must not be placed inside any control structure (so
+       it could, for example, be preceded by an OPTIONS 'EXPOSE'
+       instruction).
+
+Example: an improved version of the above factorial program
+        parse arg x
+        say x"!="fact(x)
+        exit
+ fact:  procedure           /* now we get a different p each time */
+        parse arg p
+        if p<3 then return p
+        return fact(p-1) * p
+
+NOTE: The special variable SIGL must be explicitly exposed if its current
+      value is needed within the procedure.  It is set by the CALL
+      instruction or the function call before any PROCEDURE instruction
+      is encountered.
+_________________________________________________________________________
+
+INTERPRET string
+
+This command evaluates the given string and interprets it as if it were
+part of a real rexx program. The string may contain any commands that
+the program line containing the INTERPRET command might have executed
+except that any DO or SELECT control blocks within the string must be
+complete.  That is, the string may not start any new DO or SELECT
+control blocks to be continued by the main program, and nor can it
+contain an END, LEAVE, WHEN, etc. corresponding to a control block of
+the main program.  An interpreted command can, however, cause a return
+from a function.
+
+NOTE: Interpreted strings must not contain labels.
+
+Example: This program evaluates an expression given on the command line:
+
+#!/mclab/imc/sun4/rexx  
+parse arg x
+interpret "y="||x
+say x"="y
+_________________________________________________________________________
+
+SIGNAL [VALUE] name  |  SIGNAL ON|OFF condition [NAME label]
+
+1. SIGNAL [VALUE] name
+
+In this form, the SIGNAL instruction is a primitive form of `goto'.
+Using it to control program flow in this manner is strongly discouraged.
+
+When this command is encountered interpretation jumps to the named label
+(SIGNAL labels work just like procedure labels - but SIGNAL never invokes
+another rexx program).
+
+If the VALUE keyword is present, or if the name does not start with a
+symbol or a string constant, then the name is treated as an expression
+which must evaluate to the name of a label (irrespective of case).
+
+All current DO and SELECT structures within the current procedure are
+terminated by the SIGNAL instruction before the jump is taken.
+
+When the SIGNAL instruction is executed, the variable SIGL is set to hold
+the number of the line at the time of the jump. This can be used in
+error analysis - as in:
+
+  if something_is_wrong then signal error
+  ...
+  error: say "Something is wrong at line" sigl
+
+or it can be used to type out long texts or help - as in:
+
+   <lots of argument checking>
+   if something_is_wrong then signal help /*
+   This is a paragraph of help. It is enclosed in comments, so
+   the interpreter ignores it. However the help routine will
+   use the sourceline function to type it out on to the screen.
+   */
+   ...
+   help: do i=sigl+1 while sourceline(i)~="*/"
+   say sourceline(i)
+   end
+
+The SIGNAL VALUE construction is useful for calling procedures with
+variable names. This can be done as follows:
+
+   /* procname is set to the name of a procedure */
+   call jumpto procname,arguments
+   ...
+   jumpto: parse arg jumpname
+   signal value jumpname
+   ...
+When the named procedure is called, its first argument will be its name,
+and the subsequent arguments will be those supplied by the caller.
+The DO and SELECT structures in the calling program are protected from
+the SIGNAL instruction, since the latter is encountered within procedure
+`jumpto'.
+
+2. SIGNAL ON  condition [NAME symbol]
+   SIGNAL OFF condition
+
+These instructions maintain exception handlers for the following
+contitions:
+
+ SYNTAX:   Any syntax error (for example "Bad arithmetic conversion" or
+           "Unexpected ',' or ')'") which occurs during interpretation.
+ NOVALUE:  A variable name is used which has no value.
+           NOTE: This condition is not raised during interpretation of
+                 sub-names in compound variables. Hence, if `foo' has no
+                 value, then "a=foo+1" will cause a novalue error but
+                 "a=abc.foo" will not cause an error unless ABC.'FOO' has
+                 no value.  Also, the builtin function VALUE() will never
+                 raise the NOVALUE condition.
+ HALT:     The user has attempted to halt the program, for example by
+           typing Control-C.  Signals SIGHUP and SIGTERM also raise the
+           HALT condition.
+ FAILURE:  A command to the environment returned a "failure" code.
+           Usually this means a negative return code, but see the
+           section on commands to the environment.
+ ERROR:    A command to the environment returned an "error" code.
+           This usually means a non-zero return code.  Note that if
+           "failures" are not being trapped, then "error" will catch
+           failures also.
+ NOTREADY: A function from the REXX I/O model (see the separate section)
+           was unsuccessful because, for example, an input function
+           encountered an end-of-file condition.
+           
+(These are the same conditions as for CALL ON, with the two extra
+conditions SYNTAX and NOVALUE).
+
+The SIGNAL ON instruction turns on condition handling.  Whenever the
+specified condition occurs, a SIGNAL is made to a handler.  If the NAME
+keyword is specified, then the following symbol is taken as the name of
+the handler.  Otherwise the handler has the same name as the condition.
+At this point, RC holds the number of the error which caused the jump
+(except in the case of NOTREADY) and SIGL holds the line number in
+which the error occurred.  The routine in which the SIGNAL ON
+instruction was encountered becomes the current routine; all internal
+routines which became active since then are terminated.  All
+DO/SELECT/IF control structures within the current routine are also
+terminated.  The SIGNAL ON instruction is then cancelled, and another
+SIGNAL ON instruction will be necessary to reinstate handling of this
+particular condition.
+
+At any time after control is passed to the handler, and before the
+handler causes a return from the current subroutine, the CONDITION()
+builtin function may be used to retrieve information about the
+condition which was trapped.
+
+A SIGNAL OFF instructions cancels condition handling for a particular
+condition.  If handling is turned off for ERROR, FAILURE, NOTREADY or
+NOVALUE, then the condition will be ignored whenever it occurs.  If
+handling is turned off for HALT or SYNTAX, then the program will halt
+when the condition occurs.
+
+Condition handling persists from the point of the SIGNAL ON instruction
+until the current function returns, or until a SIGNAL OFF instruction
+is executed.  If an external routine is called, condition handling will
+be turned off temporarily until the external routine finishes or turns
+condition handling on.
+
+The status of condition handling is saved across function calls.  If a
+subroutine uses a "SIGNAL ON/OFF" or "CALL ON/OFF" instruction, the
+condition handling within the current routine will be unaffected.
+
+NOTE: The SIGNAL ON SYNTAX command does not trap fatal system errors or
+      the error which is caused when EXIT or RETURN returns a non-integer
+      to the UNIX environment (this is because the latter is, in effect,
+      raised by the environment rather than by the interpreter itself).
+_________________________________________________________________________
+
+TRACE [symbol]
+TRACE "string"
+TRACE VALUE expression
+
+The symbol, string constant or expression is evaluated (the VALUE keyword
+may be omitted if the expression does not start with a symbol or a string
+constant).  It must evaluate to a word consisting of zero or more
+question marks, followed by an optional letter, followed by an optional
+string of characters. Each question mark at the start of the string
+toggles the `interactive tracing' mode (see below), and the following
+letter, if any, is translated to upper case and must be one of the
+following:
+
+   A (All):      all clauses are traced before execution
+   C (Commands): all commands to the environment are traced before
+                 execution, together with the actual string passed to
+                 the environment. If the command results in a non-zero
+                 return code, then the return code is traced after
+                 execution.
+   E (Error):    Any command to the environment resulting in an error
+                 (i.e. non-zero return code) is traced after execution,
+                 together with the return code
+   F (Failure):  Any command to the environment resulting in failure
+                 (i.e. negative return code) is traced after execution,
+                 together with the return code
+   I (Intermediates): All clauses are traced before execution, and all
+                 calculations are traced, including intermediate values
+                 evaluated during the calculation. Assignments made by
+                 PARSE instructions are also traced.
+   L (Labels):   All labels passed during execution are traced
+   N (Normal):   the default setting - same as F.
+   O (Off):      Nothing is traced, and interactive tracing is also
+                 switched off.
+   R (Results):  All clauses are traced before execution, and the results
+                 from all calculations are traced. Assignments made by
+                 PARSE instructions are also traced.
+
+If no setting is specified or if the setting is an empty string, then
+interactive tracing is turned off and tracing is set to "N".
+
+When clauses are being traced (i.e. A, R or I), when an INTERPRET command
+is traced, the actual string being interpreted is also traced. When an
+END command is traced, the source statement to which the END corresponds
+is also traced.
+
+A program may be made to trace itself during execution by signalling
+it with SIGQUIT (on the Suns this can be done by pressing "control \").
+When this signal is received, the tracing mode switches to "?i". If
+a SIGQUIT is received whilst in interactive tracing mode and if an
+interruption has already been received but not handled, the program
+exits immediately (as is the case when SIGQUIT is not handled).  This
+feature exists mainly to stop the interpreter in case of a bug.
+
+A program may be made to trace itself when execution starts by using the
+"-t" commandline flag (see the invocation section for details).
+
+Interactive tracing
+
+In interactive trace mode, all TRACE instructions passed in the program
+are ignored and the interpreter will pause after tracing each clause,
+label, command or return code (as appropriate for the trace setting).
+The interpreter prompts for input with the string ">trace>".
+   If an empty line is entered (without spaces), execution of the
+program continues normally until the next event which is traced.
+   If a line of REXX is entered, then that line is interpreted with
+tracing set to "E".  If the line calls a program, then TRACE
+instructions in that program are ignored. If the line itself uses the
+TRACE instruction, then the trace setting is altered accordingly and
+execution of the program will continue after the input line has been
+interpreted.
+   If the input line does not contain a TRACE instruction, then when it
+has been interpreted the prompt will reappear for more input.
+   If an error occurs during interpretation of the input line, a message
+is displayed and the prompt reappears (unless the command executed a
+TRACE instruction). The error does not cause the program to exit, and
+no signalling takes place (unless the error occurred in a program which
+was called by the input line and which contains its own SIGNAL ON xxx
+command).
+   Commands to the environment within the string will not set the
+variable RC, but will have non-zero return codes traced.
+   All condition traps are turned off during interpretation of the
+string.
+
+It is possible to make the interpreter change tracing and also prompt
+for more input by using the built-in TRACE function rather than the
+TRACE instruction, for example:
+   call trace r
+sets the `results' tracing mode (whilst keeping interactive mode) without
+continuing execution of the program.
+
+The interactive tracing mode is useful for the following purposes (and
+others):
+   - single-stepping through a program (use trace ?a)
+   - setting breakpoints (use trace ?l and put a label at the breakpoint)
+   - examining or changing variables during execution.
+
+The input line is interpreted in exactly the same way as with the
+INTERPRET command, and so the same restrictions apply (e.g. DO and END
+instructions etc must be matched properly).
+
+BUG:The following also applies, however:
+  - some of the source information is lost, so any PARSE SOURCE
+    instruction in the line will have the calling method and the calling
+    name replaced by "TRACE" (this does not apply to PARSE SOURCE
+    instructions within programs that may be called by the input line).
+
+If the input line transfers control by a SIGNAL instruction, then control
+is immediately transferred to the target instruction and it is executed
+before tracing resumes. If the input line contains a RETURN or EXIT
+instruction, then execution returns to the caller and continues to the
+end of the current statement. The return may cause a change in the
+tracing mode, since this is saved across function calls. However, if
+interactive tracing is still in effect, then tracing will resume at the
+next instruction.
+
+NOTE:If the interpreter has a controlling terminal (that is, "/dev/tty"
+     can be opened when the interpreter initialises), then the trace
+     prompt will be written to the terminal, and input will be read from
+     the terminal. Otherwise, stderr and stdin are used respectively.
+     If an error occurs during a command which was typed in interactive
+     trace mode, then the error message will be written to the terminal.
+     However, all normal input and output use stdin and stdout, while
+     trace output is written to the requested file (see OPTIONS).  In
+     particular, if tracing has been redirected, then no trace output
+     will appear on the terminal. Therefore it is not a good idea to
+     redirect tracing when interactive tracing will be used.
+
+BUG: Interactive tracing is not recursive, i.e. if, during interactive
+     tracing, a line is entered such as:
+        trace i;say a+b
+     then the tracing of "say a+b" (and other statements following the
+     TRACE instruction) will not be interactive, even though the
+     interactive tracing mode is (in theory) still in operation.
+
+TRACE output
+
+Each line of trace output is preceded by three characters which identify
+the type of trace output. Any clause or command traced will be indented
+according to its logical depth of nesting. Results (or intermediate
+values) will be indented a further two spaces, and have leading and
+trailing quotes added. The line numbers of source statements and labels
+are displayed before the three-character prefix.  An interpreted
+instruction or a command about to be executed will be displayed without
+a line number.
+
+The three-character prefixes are:
+
++++ A trace message (an error message, or the return code from a command)
+
+*-* A source statement or label (exactly as it appears in the source).
+*,* A source statement which is continued from the previous line.
+*~* The result of evaluating an expression which is either a command to
+    be passed to the environment or the parameter of an INTERPRET
+    instruction.
+
+>>> The result of an expression displayed in "trace r", or the value
+    assigned to a variable during parsing or during update of the
+    control variable of a repetitive DO loop.
+>.> The value `assigned' to a placeholder (dot) during parsing.
+
+The following prefixes are used during TRACE I:
+
+>V> The contents of a variable
+>L> a literal (that is, a constant symbol or number, an uninitialised
+    variable, or a string/hex/binary constant)
+>F> The result of applying a function
+>P> The result of applying a prefix operator
+>O> The result of applying a (binary) operator
+>C> The name of a compound variable (after substitution and before use).
+
+The trace setting is saved across function calls, so that if tracing is
+switched on or off during a function, the previous setting is restored
+when the function returns. This means that:
+  - if a function is known to work, then "trace off" may be placed at
+    the start. When a program is being traced, tracing is switched off
+    when the function is entered, and back on when the function returns.
+  - if a function is known not to work, then a trace instruction placed
+    at the start of the function will switch tracing on only for the
+    duration of the function call.
+_________________________________________________________________________
+
+OPTIONS expression
+
+The expression is evaluated and broken into blank-delimited words.
+Each word is examined to see if it is recognised as a valid interpreter
+option for this implementation.  Any word which is not recognised is
+skipped over, since it probably applies to some other implementation.
+
+In REXX/imc, the case of the options is not significant, and options
+may be abbreviated.  The minimum abbreviation for each option is shown
+in uppercase.  Options which require an '=' are only recognised if the
+'=' sign is present and followed by a valid string. 
+
+REXX/imc currently recognises the following options (options starting
+"no" are listed under their opposites):
+
+ EXPose              This option makes the PROCEDURE EXPOSE instruction
+ NOEXPose            legal at the beginning of a program which is called
+                     as an external subroutine or function, so that it
+                     can gain access to the variables of the caller.  The
+                     NOEXPose option restores the standard behaviour in
+                     which PROCEDURE will cause an error when written at
+                     the beginning of a program.  See also the PROCEDURE
+                     instruction.
+
+ SETRC               This option causes the I/O operations linein,
+ NOSETRC             charin, lineout, charout, parse pull and parse
+                     linein to set the RC special variable as they did in
+                     earlier versions of REXX/imc.  If the NOTREADY
+                     condition is not being trapped then an I/O operation
+                     which sets RC to a nonzero value will instead
+                     cause an ERROR condition to be raised, if that
+                     is being trapped.  Option NOSETRC restores the
+                     behaviour of I/O operations to the documented
+                     behaviour.
+
+ SIGPipe             Usually the interpreter terminates silently when it
+ NOSIGPipe           receives a SIGPIPE signal.  This occurs when a
+                     program tries to write data down a pipe with no
+                     process to read it: for example, the command
+
+                       rexx -s "do forever; say hello; end" | head -1
+
+                     will echo one line of output before the "head"
+                     process terminates, and the Rexx program will then
+                     receive a SIGPIPE and terminate.
+
+                     Using the SIGPipe option will make the interpreter
+                     trap this signal and continue running.  In this
+                     case the program should take care to detect error
+                     conditions from LINEOUT, CHAROUT and other I/O
+                     functions to avoid wasting resources.
+
+                     Using the NOSIGPipe option will restore the
+                     behaviour of terminating when a SIGPIPE signal is
+                     received.
+
+ TRACEfile=filespec  If "filespec" represents a filename which can be
+                     opened for writing, then an information message is
+                     written to the standard output and all trace output
+                     is redirected to the named file.  Otherwise an error
+                     message is written to the standard error and tracing
+                     remains unchanged.  Instead of a regular file the
+                     filespec can be "stdout" to send trace output to
+                     the standard output or "stderr" to send it to the
+                     standard error.
+_________________________________________________________________________
+
+ADDRESS [VALUE] [environment]  |  ADDRESS environment command
+
+When  the REXX interpreter finds a program statement which is not an
+instruction (as listed above), then it evaluates the whole statement as
+an expression (if it can), and issues the resulting string to the
+current environment as a command.
+
+The first form of the ADDRESS instruction stated above changes the
+environment (until the next ADDRESS instruction).  If the environment
+name is given, it may be a symbol (which is translated to upper case,
+but not substituted by its value) or a string constant, or a string
+expression preceded by the keyword VALUE.  The VALUE may be omitted if
+the expression does not start with a symbol or a string constant.  The
+current environment is changed to the given string.
+
+If no environment name follows the ADDRESS instruction, then the previous
+environment is made current.  For example:
+
+   address unix       /* "UNIX" is current   */
+   address "MY_ENV"   /* "MY_ENV" is current */
+   address            /* "UNIX" is current   */
+   address            /* "MY_ENV" is current */
+
+The second form of the ADDRESS instruction given above executes a command
+in a given environment without changing the current environment.  The
+environment name must be a symbol or string constant, and the command may
+be any string expression.  So, if the following line is appended to the
+previous example:
+
+   address command "ls -al"
+
+the command "ls -al" is executed in environment "COMMAND", while the
+current environment is still "MY_ENV".
+
+Whenever a command is executed, the special variable RC is set to the
+return code given by the command.  If this return code is non-zero,
+then the command will also cause a FAILURE or ERROR condition to be
+raised.  These conditions are ignored unless trapped by CALL ON or
+SIGNAL ON.
+
+Two environments are built in to REXX/imc:
+
+ADDRESS UNIX
+
+Each command sent to the "UNIX" environment is executed in a separate
+Bourne shell.  Note that this involves considerable overhead, and
+moreover no command can make a permanent change to the environment (e.g.
+"set" and "export" will have no effect).  However, it does allow the
+flexible syntax of the Bourne shell to be used, including piping, I/O
+redirection, and filename expansion.
+
+In this environment, any command which returns a code of 1 will raise
+the FAILURE condition, as well as any command which returns a negative
+return code.  This is because the Bourne shell always returns 1 when
+it fails to find the requested command.
+
+ADDRESS COMMAND
+
+Each command sent to the "COMMAND" environment is tokenised and executed
+by a primitive shell which is built into the interpreter (in shell.c).
+This makes for quicker execution of each command, but note that at
+present the only "meta-characters" which are supported are quotes.  That
+is, enclosing a string in quotes passes it verbatim (i.e. untokenised)
+as a parameter to a command.  In particular, piping, file redirection
+and filename expansion are not supported.  Nor does this shell have any
+builtin commands (such as cd, set), with the exception of "hash" (see
+later).  For speed of execution, each time a command is executed its
+path is remembered in a hash table.  The hash table statistics may be
+obtained with the "hash" builtin command, which is similar to that of
+the Bourne shell (and bash).  The command "hash name1 [name2 ...]" will
+search for each of the given names and add the results to the hash
+table, but if any of the names is "-r" then the hash table will be
+cleared.  The names are examined from left to right, so "hash cat -r
+ls" will result in just "/bin/ls" in the hash table.  The hash table is
+also cleared whenever putenv() or value(,,"ENVIRONMENT") is used to
+change PATH.  The command "hash" will print out the list of hash table
+entries.  "hits" represents the number of times a command has been
+looked up in the table, and "cost" represents the amount of work which
+was initially carried out in searching along the path for the command.
+A plus-sign in column 1 indicates that the entry was placed in the same
+hash bucket as the previous entry; the commands within hash buckets are
+arranged in alphabetical order.  The hash buckets are listed in no
+particular order.
+
+In this environment, an unrecognised command produces return code -3.
+Any command which produces a negative return code will raise the
+FAILURE condition.
+
+Other environments may be added by application programs.
+
+If a command is sent to an unrecognised environment, then return code
+-3 and a FAILURE condition results.
+
+The environment when a program starts up is usually UNIX.  The current
+environment may be found by calling address(), and the environment at
+startup may be found using "parse source".
+
+Here is a simple shell program to demonstrate the use of commands:
+
+do i
+   sayn i'>'
+   parse pull command
+   parse upper var command word .
+   if word='EXIT' then exit
+   command
+   if rc!=0 then say "The return code was" rc
+end i
+
+Each command is read from standard input. If the command 'Exit' is
+received, the shell quits. Otherwise, the command is issued to a Bourne
+Shell and the return code is checked.
+
+Both the ADDRESS settings (that is, the current environment and the most
+recent one) are saved across function calls.
+
+NOTE: The program rxstack (in Oxford /mclab/imc/sun4/rxstack) may be
+      used to access the stack while executing a shell command.  See
+      the stack section below for details.
+_________________________________________________________________________
+
+The REXX I/O Model
+
+Standard REXX allows files to be accessed using the seven functions
+charin, charout, chars, linein, lineout, lines, stream.  This REXX
+version has fourteen I/O functions in total; the others remain for
+backward compatibility but may be removed in future because their
+functionality is covered by the stream() function.
+
+Each I/O function may accept a stream name as a parameter.  Usually,
+the stream name is the path name of a file which will be accessed -
+though other meanings may be given to streams by the "open", "popen"
+and "stream" functions.
+
+Associated with each currently accessed stream is a read pointer and a
+write pointer.  Characters or lines can be read from the file at the
+position indicated by the read pointer, or they may be written to the
+file at the position indicated by the write pointer.  In each case the
+pointer is updated to indicate the new file position after the read or
+write.  The file pointers may be also moved explicitly by various
+functions.  Note that the read and write pointers will in general be
+different, in contrast to the usual Unix file pointer.
+
+Each file is opened by REXX when it is first accessed, and closed when
+REXX exits.  Therefore files need not be opened and closed explicitly,
+though in this version functions are provided for that purpose.  If
+many files are to be accessed, it is advisable to close files which are
+no longer needed because otherwise the Unix error "Too many open files"
+may result.
+
+Two kinds of stream exist: persistent and transient.  A persistent
+stream is one which refers to a regular file, whereas a transient
+stream is any other kind.  In particular, ttys and pipes are transient
+streams.  The main difference between the two is that the read and write
+pointers of a permanent stream may be repositioned, whereas those of a
+transient stream may not.
+
+If a function encounters an I/O error and is unable to perform its
+function, then it will raise the NOTREADY condition.  This condition
+will be ignored unless it is trapped by SIGNAL ON or CALL ON.  However,
+in all cases it is possible to examine the most recent I/O error using
+the STREAM() function.
+
+The three streams "stdin", "stdout" and "stderr" are already open when
+REXX starts up.  They may be used just as any other files, but they are
+also accessed by instructions such as "say" and "pull", and by Unix
+commands.  Because of this, REXX/imc only guarantees to be well-behaved
+if stdin is never written to, and stdout and stderr are never read from.
+
+The standard I/O functions CHARIN, CHAROUT, CHARS, LINEIN, LINEOUT,
+LINES and STREAM all accept the empty string as a stream name.  This is
+interpreted identically to the word "stdin", except in the cases of
+CHAROUT and LINEOUT, in which it means "stdout".  However, the empty
+string may not be used in the STREAM function in conjunction with the
+the stream commands open, fdopen, popen or flush.
+
+The I/O functions, and their descriptions, follow.  Note that no
+"stream" or "file" name may contain a NUL character (i.e. "00"x).
+
+CHARIN([stream] [,[position] [,count]])
+
+If stream is supplied, it is read from, otherwise "stdin" is read.  The
+charin function attempts to read a character from the stream, and
+returns the result.  If count is supplied, then that many characters
+are read and returned.  The length of the result may be less than the
+number of characters requested if an error occurs.  If position is
+supplied, then the read pointer is seeked to that position (with 1
+being the first character of the stream) before reading.  If count is
+zero, then the seek is performed without reading any characters.
+
+If count>0 and no characters are read then the NOTREADY condition will
+be raised.
+
+If an interruption (^C) occurs during the read, then characters already
+read may be lost.
+
+NOTE: In order to read single characters from the keyboard, it is
+      necessary to set the terminal into a suitable mode.  For example
+      the Unix command "stty cbreak -echo" allows single characters
+      to be read without echoing.  This should be reset with
+      "stty -cbreak echo" before the program exits.
+
+CHAROUT([stream] [,[string] [,position] ]
+
+If stream is supplied, it is written to, otherwise stdout is written to.
+If the string is supplied, it is written to the stream, otherwise no
+write is performed.  If the position is supplied, the write pointer is
+set to that position (with 1 being the first character) before the
+write (if any).
+
+If no string and no position are supplied, then all pending output to
+the stream is flushed, and the write pointer is set to the end of the
+stream.
+
+The result will be the number of characters left unwritten, and if that
+is non-zero then the NOTREADY condition will be raised.
+
+CHARS([stream])
+
+The result will be the number of characters which are immediately
+available for reading from stream or, if it is omitted, from "stdin".
+If the stream is not open and does not name a file which can be read,
+zero will be returned and the NOTREADY condition raised.
+
+CLOSE(stream)
+
+The named stream is closed and REXX's table of information for that
+stream is deleted.  The result will be the return code from the close
+system call.
+
+NOTE: if stream is one of "stdin" or "stdout" then future input or output
+      operations with "say" and "pull" will fail to work properly.
+
+This call is equivalent to STREAM(stream,'c','close) and may be deleted
+in future releases.
+
+FDOPEN(fd [,[mode] [,stream]])
+
+This function is for accessing files which have already been opened by
+another program and whose file descriptor numbers are known.  It should
+not be used for opening files to which REXX already has access.
+
+If mode is supplied, its first character must be one of "r" or "w",
+meaning that the descriptor is to be opened for reading or read-write
+respectively. The default is "r".  This mode should match the mode of
+the already-open file descriptor.
+
+If the stream argument is supplied, then the given fd will be opened and
+given that name so that all future references to the fd will call it by
+the given name.  Otherwise, future references to the fd will be by its
+number.
+
+If a stream argument is supplied which names an open stream, that
+will be closed first.  Note that the new stream will be opened on a
+different descriptor, so in particular this function should not be used
+to redirect the standard input, output or error.
+
+The result from fdopen will be the return code given by the fdopen
+system call.
+
+Example. If this program is called "foo.rexx":
+
+        /* write to file descriptor 3 */
+        call fdopen 3,"w"
+        call lineout 3,"This is a line of text"
+
+then the Bourne Shell command "rexx foo 3>foobar" will write a line of
+text to the file foobar.
+
+This call is equivalent to STREAM(stream,'c','fdopen' [mode] [,fd]) and
+may be deleted in future releases.
+
+FILENO(stream)
+
+The result of this function is the file desriptor number associated with
+the named stream, or -1 if that could not be determined (for example, the
+stream is not open).  This function may be used to pass file descriptors
+on to shell commands, for instance as in "cat <&7".
+
+This call is equivalent to STREAM(stream,'c','fileno') and may be
+deleted in future releases.
+
+FTELL(stream)
+
+The result of this function is the current file pointer associated with
+the given stream (with 1 meaning the beginning), that can be used as a
+position parameter to the charin or charout calls.  If that could not
+be determined (for example, the stream is a pipe or is not open) then -1
+will be returned.
+
+NOTE: This is the actual file pointer, not the read or write pointer as
+      stored by REXX (though the answer will probably equal one of those,
+      according as to whether the last operation on the stream was a read
+      or a write).
+
+This call is equivalent to STREAM(stream,'c','ftell') and may be
+deleted in future releases.
+
+LINEIN([stream] [,[line] [,count]])
+
+If stream is supplied, it is read from, otherwise "stdin" is read.  The
+linein function attempts to read a line from the stream, and returns the
+result (with the terminating newline character removed).  If count is
+supplied, it must be zero or one.  If zero, then no read is performed,
+and if one, one line is read.  If an error occurs and no characters have
+been read, then an empty string is returned and the NOTREADY condition
+is raised.  If line is supplied, then the read pointer is seeked to
+that line number (with 1 being the first line of the stream) before
+reading.  If count is zero, then the seek is performed without reading
+any characters.
+
+If an interruption (^C) occurs during the read, then characters already
+read may be lost.
+
+NOTE: Seeking by line number is very inefficient, because every
+      character of the stream before that line has to be read (unless the
+      current read pointer is at a known line number less than that
+      requested, in which case only every character between the current
+      read position and the required position need be read).
+
+LINEOUT([stream] [,[string] [,line]])
+
+If stream is supplied, it is written to, otherwise stdout is written to.
+If the string is supplied, it is written to the stream and terminated
+with a newline character, otherwise no write is performed.  If line is
+supplied, the write pointer is set to that line number (with 1 being the
+first line) before the write (if any).  The line must not contain any
+newline characters, because these will act as line separators in the
+stream.  To write text containing newline characters, please use charout
+instead.
+
+If no string and no line number are supplied, then all pending output to
+the stream is flushed, and the write pointer is set to the end of the
+stream.
+
+The result will be 1 if the line was not successfully written, in which
+case the NOTREADY condition will be raised.  Otherwise the result will
+be zero.
+
+NOTE: seeking by line number is very inefficient.
+
+LINES([stream])
+
+If the named stream, or "stdin" if no stream is named, is a persistent
+stream (or the name of a regular file), then the number of lines
+available for reading will be counted and returned.  Note that this
+implies reading every character remaining in the file, and this should
+be avoided if possible.
+
+If the stream is a transient stream, then the result will be "1" if
+characters may be read immediately from the stream, and "0" otherwise.
+It is impossible to calculate the exact number of lines in this case.
+
+If the stream is not already open and does not name a file which can be
+read, then zero will be returned and the NOTREADY condition raised.
+
+OPEN(file [,[mode] [,stream]])
+
+The file specified is opened, if possible, and the error code from the
+system call is returned.  If mode is omitted, then the file is opened
+for reading only, otherwise the first character of the mode must be
+"r" (to open for reading), "w" (to open for read/write, with the file
+being created or truncated initially), or "a" (to append, i.e. open for
+read/write with the write pointer at the end of any existing data in the
+file initially).
+
+This function will not raise the NOTREADY condition, nor will it record
+any error for STREAM() - the stream will remain unopened (or "UNKNOWN")
+if the open fails.  The return code from the call should be checked to
+see whether an error occurred.
+
+If the stream argument is supplied, then any future reference to the
+open file will use this as the stream name - otherwise the filename
+(exactly as specified in the open function call) will be used.
+
+If a stream argument is supplied which already refers to an open file,
+then that will be closed and the new file will be opened on the same
+descriptor.  The standard input, output or error may be redirected by
+calling open with 'stdin', 'stdout' or 'stderr' as the stream argument.
+
+This call is equivalent to STREAM(stream,'c','open' [mode][,file]) and
+may be deleted in future releases.
+
+PCLOSE(stream)
+
+This function must be used to close any stream which was opened by the
+popen function.  The result will be the error code from the pclose system
+call, which will in turn be the exit code of the command being run at the
+other end of the pipe if the pipe was closed successfully or -1 if not.
+A result of -1 may mean that the given stream was not opened with popen.
+
+This function will not raise the NOTREADY condition, nor will it record
+any error for STREAM().
+
+This call is equivalent to STREAM(stream,'c','pclose') and may be
+deleted in future releases.
+
+POPEN(command [,[mode] [,stream]])
+
+A Bourne Shell is started off in the background to run the given command
+with a one-way pipe leading from or to it.  If the mode is omitted, or
+starts with the letter R, then the output of the command may be read
+from the pipe.  If a mode starting with the letter W is given, then the
+input of the command may be written down the pipe.
+
+NOTE: Care must be taken when opening pipes for writing, because if the
+      command fails or terminates unexpectedly then the Rexx program
+      will receive a SIGPIPE and terminate.  To counter this see OPTIONS
+      'SIGPIPE' and always check for the NOTREADY condition when writing
+      down the pipe.
+
+The return value from popen will be zero if the pipe was opened
+successfully, or an error number if not.  Note that the pipe may still
+be opened successfully even if the command can not be executed: it
+is the Bourne Shell's job to report that the command can not be executed.
+The return code from the shell can be obtained with the pclose function.
+
+This function will not raise the NOTREADY condition, nor will it record
+any error for STREAM().
+
+If the stream argument is supplied, then any future reference to the pipe
+will use this as the stream name - otherwise the command in full will be
+used.
+
+If a stream argument is supplied which already refers to an open
+stream, then that will be closed after the pipe has been successfully
+opened.  This means that the pipe will be opened on a different
+descriptor, and the popen function should not be used to redirect the
+standard input, output or error.
+
+The pipe should be closed with the pclose function so that the shell
+process may be removed from the process table.  If that is not done,
+then defunct processes will remain until REXX exits.  This may be
+acceptable for a small number of popen calls, but not if the REXX
+program calls popen many times or is long-lived.
+
+Example: the following program outputs in hex, using an "od" process:
+
+    output= "/bin/od -x"
+    call popen output,"w"
+    call lineout output,"This is some sample output"
+    call pclose output
+
+This call is equivalent to STREAM(stream,'c','popen' [mode][,command])
+and may be deleted in future releases.
+
+STREAM(stream[,[option][,command]])
+
+This function provides miscellaneous operations on the named stream.
+The first character of the option must be "C", "D" or "S" (in upper or
+lower case), if the option is given.  If the option is omitted, then
+"S" is assumed.  The command parameter must be given if and only if the
+option is "C".
+
+Option "S"
+
+The function returns the status of the stream as one of the following
+strings:
+ "READY"     - the stream is ready for input or output.
+ "NOTREADY"  - the stream is not ready; usually this indicates that the
+               end of the file was reached.
+ "ERROR"     - an I/O error has occurred.
+ "UNKNOWN"   - the stream has not been accessed.
+
+Option "D"
+
+The function returns a description of the stream's status.  This will
+be "Ready", "Unknown", or the text of an error which has occurred.
+This option may be used after a NOTREADY condition is trapped, to find
+out what happened to the stream.
+
+Option "C"
+
+The function executes the given command on the stream and returns a
+result depending on the command.
+
+Valid commands in REXX/imc follow.  All command names and mode
+parameters may be given in mixed case, and wherever a comma appears in
+the command, a space is acceptable as long as the parameter before it
+is not omitted.  For example, stream('file','c','Open R /tmp/testfile')
+is a valid call to this function.
+
+ close      - the named stream is closed and the return value from the
+              system call is returned.  See CLOSE() for details.
+
+ fdopen [mode][,number] - if the number is given, it is used as a
+              numeric file descriptor and opened on the given stream.
+              Otherwise, the given stream is taken to be a numeric file
+              descriptor and opened.  If the mode is omitted, "r" is
+              assumed.  The return value from the system call is
+              returned.  See FDOPEN() for details.
+
+ fileno     - the file descriptor corresponding to the given stream is
+              returned.  See FILENO() for details.
+
+ flush      - the named stream is flushed.  This is similar to calling
+              charout(stream).  The return value is zero on success and
+              -1 on error, which may result if the stream is not open or
+              if a write error occurs on the stream.  If a write error
+              occurs then the NOTREADY condition will be raised.
+
+ ftell      - the file pointer of the given stream is returned.  See
+              FTELL() for details.
+
+ open [mode][,file] - if the file name is supplied, it is opened on
+              the given stream.  Otherwise, the given stream is taken
+              to be a file name and opened.  If the mode is omitted,
+              "read" is assumed.  The return value from the system call
+              is returned.  See OPEN() for details.  In addition, the
+              following options are supported for compatibility with
+              OS/2 Object Rexx and Regina, but note that the command
+              "OPEN WRITE" is incompatible because it truncates the file
+              whereas on OS/2 it appends to the file.  Also note that
+              opening a stream for writing currently also implies opening
+              it for reading.
+ open write append  - open the stream for appending.
+ open write replace - truncate and open the stream for writing.
+ open both          - open the stream for reading and appending.
+ open both append   - same as "open both".
+ open both replace  - truncate and open the stream for reading and
+                      writing.
+
+ pclose     - the stream, which must have been opened by "popen", is
+              closed.  The return value from the system call is
+              returned.  See PCLOSE() for details.
+
+ persistent - the stream will be treated as a persistent stream.
+              Changing this attribute is not generally a good idea but it
+              might be useful if, for example, you open the floppy disk
+              device and want to seek to a particular block.  Normally
+              the device would be considered a transient stream and
+              seeking would not be allowed on it.
+
+ popen [mode][,command] - if the command is supplied, a Bourne shell is
+              started up to execute it.  Otherwise, the given stream
+              name is assumed to be a command and the shell is started
+              up to execute that.  A pipe is opened from the shell to
+              the given stream.  If the mode is omitted, "r" is
+              assumed.  The return value from the system call is
+              returned.  See POPEN() for details.
+
+ query <info> - the requested information is returned as detailed below.
+              The return value will be the empty string unless the first
+              argument of the STREAM function names either an open stream
+              or an existing file on the system.  The <info> is one of
+              the following words.
+    datetime - returns the last modification time of the file in the
+              format mm-dd-yy hh:mm:ss.  This function is deprecated in
+              favour of "timestamp" since it only returns a two-digit
+              year.
+    exists -  returns a canonical name for the file (or, as detailed
+              above, an empty string if the file does not exist).  If the
+              stream refers to a file whose full path name can be found,
+              the return value will be this name.  Otherwise the return
+              value will be either a partial path name for the file, if
+              one is known, or the same as the stream name.
+    handle -  returns the file descriptor corresponding to the stream
+              if it is currently open, otherwise an empty string (very
+              similar to the "fileno" stream command).
+    size   -  returns the size of the file in bytes, if it is a regular
+              file.  Zero is returned if the file exists but is not a
+              regular file.
+    streamtype - returns "UNKNOWN" if the stream is not currently open,
+              otherwise "PERSISTENT" or "TRANSIENT" as appropriate to the
+              type of stream.
+    timestamp - returns the last modification time of the file in the
+              format yyyy-mm-dd hh:mm:ss.
+
+ transient -  the stream will be treated as a transient stream (see the
+              "persistent" command).
+_________________________________________________________________________
+
+The REXX Stack
+
+The REXX stack is implemented by a stack process, with which the
+interpreter communicates by means of a socket. The PUSH, QUEUE, and PULL
+instructions and the QUEUED() function all communicate with the stack
+process.
+
+If a stack exists, then the standalone program rxstack may be used to
+stack or retrieve data. This can be used to communicate to rexx the
+output of a command (for instance "ls -al | rxstack") or to input data
+from rexx (for instance "rxstack -print > /tmp/file"). The invocation
+syntax of this program is:
+
+rxstack [-fifo|-lifo] [-print|-pop|-peek|-drop|-num|-string "data"]
+
+The meaning of these flags is as follows:
+   -fifo   stack in FIFO order (the default)
+   -lifo   stack in LIFO order
+   -print  empty the stack, outputting each item on standard output
+   -pop    pop one item and output on standard output
+   -peek   output the first item on standard output without deleting it
+   -drop   discard one item
+   -num    output the number of items currently stacked on standard
+           output in decimal, followed by newline character
+   -string interpret the next argument as a literal string to be stacked
+If none of the above flags (except -fifo or -lifo) is specified, then
+each line of standard input is stacked until an EOF is received.
+
+Each stack item may contain arbitrary characters, including newline
+characters, but when rxstack takes input from standard input, all
+newline characters are taken to be item separators and are deleted
+before each item is stacked. Similarly, when rxstack outputs stack items
+each item is followed by a newline character.
+
+The name of the socket used for communication is stored in the
+environment variable RXSTACK. It is assumed that a stack exists if and
+only if this variable exists. Multiple processes may share the same stack
+but multiple users may not usually share one stack because the sockets
+for each user are kept in a separate protected directory belonging to
+that user.
+
+When REXX is invoked, if no stack exists then one is created, and is
+destroyed when REXX exits. If a stack exists then REXX uses that stack.
+
+The program rxque may be used to create a stack process independently of
+REXX (for instance, so that REXX need not create one on startup, or so
+that stack data may persist across invocations of REXX). This is done
+by the program rxque. It may be invoked in three different ways:
+
+rxque
+   starts a stack process in the background and outputs two environment
+   variables to stdout in the format
+   RXSTACK=<name> RXSTACKPROC=<number>
+   where RXSTACKPROC is the process number of the stack, which must be
+   killed when the stack is no longer needed. To avoid unwanted processes
+   being left around when errors occur, rxque will terminate itself if it
+   finds that its parent process no longer exists when it has been
+   sleeping for five minutes without communication.
+   
+   This output can either be parsed by a controlling program or used
+   directly by a shell, for instance by:
+   eval `rxque`;export RXSTACK RXSTACKPROC
+
+rxque -csh
+   is similar to the above but outputs two setenv commands in a format
+   acceptable for the c-shell, so that
+   eval `rxque -csh`
+   will set the environment variables correctly in the c-shell.
+
+rxque <filename>
+   starts a stack process in the background which uses <filename> as the
+   communication socket. This file will be deleted if it exists, before
+   the socket with that name is opened. The process number of the stack
+   process will be output to stdout, followed by a newline.
+
+For instance:
+% eval `rxque -csh`
+% ls -al | rxstack -lifo
+% rxstack -num
+45
+% rxstack -print
+[many lines deleted]
+drwxr-xr-x 13 imc          1536 Oct 28 16:56 ..
+drwx------  5 imc          1024 Oct 28 13:12 .
+total 194
+% kill $RXSTACKPROC
+% unsetenv RXSTACK
+% rxstack
+RX Stack not found
+_________________________________________________________________________
+
+Error Messages
+
+As far as is possible, this interpreter conforms to the standard
+numbering system for error messages. Messages which may be produced by
+this interpreter are as follows (explanations are omitted when the
+meaning is obvious):
+
+Failure returns (negative)
+
+-3 Error loading program
+   A message indicating the reason will usually be displayed
+   immediately before this message.
+   
+-1 Initialisation error
+   A failure in some essential service, such as not being able to start
+   up the stack process.  Alternatively, some error occurred while
+   processing the commandline arguments (in which case an explanation
+   follows the message text).
+
+Standard REXX errors (1-50)
+
+ 4 Program interrupted
+   Control-C has been typed, or a SIGHUP or SIGTERM signal has been
+   received.
+
+ 5 Machine storage exhausted
+
+ 6 Unmatched '/*' or quote
+   (this is reported as the program is loaded, before execution. The line
+   number given corresponds to the start of the string or comment which
+   is unterminated. Alternatively, the error may occur during an
+   INTERPRET instruction, in which case the INTERPRET instruction itself
+   is named. This also applies to errors 13 and 37).
+   
+ 7 Expected WHEN/OTHERWISE
+   Either a SELECT is not followed immediately by a WHEN, or the end of
+   the SELECT structure has been reached, no condition was true, and no
+   OTHERWISE clause is present.
+   
+ 8 Unexpected THEN/ELSE
+
+ 9 Unexpected WHEN/OTHERWISE
+
+10 Unexpected or unmatched END
+
+13 Invalid character in program: [char]
+   The only characters which are allowed in program text (excluding
+   comments and string constants) are spaces, tabs, newlines, the
+   alphanumerics (A-Z, a-z, 0-9) and the symbols:
+            @#.?!_$|&*()-+=^\'";:<,>%/
+   (see also error 6)
+
+14 Incomplete DO/SELECT/IF
+   An END is probably missing.
+
+15 Invalid binary or hexadecimal string
+
+16 Label not found: [label]
+   The target of a SIGNAL (whether explicit or caused by a trap) is
+   missing.
+
+17 Unexpected PROCEDURE
+   The PROCEDURE instruction should only be placed directly after the
+   entry point of a function.
+   
+18 Expected THEN
+
+19 String or symbol expected
+   A string or symbol was expected (e.g. after SIGNAL or NUMERIC FORM)
+   but was missing or invalid.
+   
+20 Symbol expected
+   A symbol was expected (e.g. after PARSE VAR or, optionally, after
+   LEAVE or ITERATE) but was missing or invalid.
+
+21 Invalid data on end of clause
+   Extra characters were found when the interpreter expected a line end
+   or a semicolon. In the special case of the END instruction, the symbol
+   (or SELECT) appearing after the END did not match up with the
+   beginning of the structure being ended.
+   
+24 Invalid TRACE request
+
+25 Invalid subkeyword found
+   In an instruction such as NUMERIC which requires a subkeyword (e.g.
+   NUMERIC DIGITS, etc), that subkeyword was missing or invalid.
+   
+26 Invalid whole number
+   A function call or an instruction required an integer expression, but
+   either a non-integer or an out-of-range number was supplied.  The
+   magnitude of a whole number should not exceed 1999999999.
+   
+27 Invalid DO syntax
+
+28 Invalid LEAVE or ITERATE
+   A symbol specified after LEAVE or ITERATE was either invalid or did
+   not correspond to an active loop, or there is no loop currently
+   active.
+   
+30 Symbol > [nnn] characters
+   A variable name exceeded the implementation limit.
+
+31 Name starts with number or '.'
+   The name in this case will be a symbol which is being given a value in
+   an attempted assignment.
+   
+35 Invalid expression
+   A syntax error occurred during the evaluation of an expression. This
+   error also sometimes results when an expression is missing.
+   
+36 Unmatched '('
+
+37 Unexpected ',' or ')'
+   When reported during loading or before interpreting a string (see
+   error 6), this means that a comma occurred at the end of a line
+   which has no successor. At other times, it means that either an
+   unmatched right parenthesis was found or that a comma was found in
+   an inappropriate position (such as in SAY 1,2)
+   
+38 Invalid template
+   A PARSE instruction has invalid syntax.
+
+39 Evaluation stack overflow (> [nn] pending operations)
+   An expression was too complex to evaluate.  This usually only occurs
+   if there is a large number of successive prefix operations, such as
+   in: say ++++++++++++++++++++++++++++1.
+
+40 Incorrect call to routine
+   A call to a function or subroutine specified the wrong number of
+   parameters, or missed out a mandatory parameter, or supplied an
+   inappropriate parameter for the function.
+
+41 Bad arithmetic conversion
+   An arithmetic operator was used on a string which is not a number.
+   
+42 Arithmetic overflow or underflow
+
+43 Routine not found: [name]
+
+44 Function did not return data
+   When the caller of a function discovers that it did not return
+   anything, this error is raised.
+
+45 No data specified on function RETURN
+   When a Rexx program or subroutine was called as a function, RETURN
+   must be followed by an expression or the RETURN instruction will
+   raise this error.
+
+47 Unexpected label
+   A label was present in the expression following INTERPRET.
+
+48 Failure in system service
+   This indicates either that a communication error occurred whilst
+   dealing with the stack, or that an error occurred whilst trying to
+   load a ".rxfn" file to call an external function.
+   
+49 Implementation error
+   The REXX interpreter has discovered a bug in itself, since some
+   internal structure is inconsistent.  Naturally, you will never see
+   this message. ;-)
+
+Implementation-defined errors (80-99)
+
+80 No-value error
+   This is the value to which the special variable rc is set when a
+   SIGNAL ON NOVALUE trap is activated.
+
+81 Use of an un-implemented feature!
+
+82 Syntax error
+   A syntax error has been discovered which cannot be described by any
+   of the other messages (This message should never appear except when
+   a LOCAL feature is being used).
+
+83 Label ends with '.'
+   (this error is reported as the program is read in)
+   Labels ending with '.' are disallowed since a program containing
+   such a label may be unaware that foo.(3) is not a call to the
+   function "foo." but a reference to a compound symbol.
+   
+84 Too many arguments (> [nn])
+   A call to a function or subroutine specified too many actual
+   parameters for the interpreter to handle.
+
+85 ERROR condition occurred
+   This code is used internally when a "SIGNAL ON ERROR" occurs.
+   You may see this message if the signal handler does not exist.
+
+86 FAILURE condition occurred
+   This code is used internally when a "SIGNAL ON FAILURE" occurs.
+   You may see this message if the signal handler does not exist.
+
+88 Unexpected '*/'
+   This "error" is no longer used.
+
+Unix system errors (101-198)
+
+   These are the error messages which may result from a call to
+   stream() with the "Describe" option.  They are defined by the Unix
+   run-time library, and include such messages as "Permission denied"
+   and "No such file or directory".  The number of the message is just
+   100 plus its usual value in Unix.
+
+Other I/O errors (100,199-210)
+
+   These are the error messages which may result from a call to
+   stream() with the "Describe" option and which are provided by the
+   interpreter rather than by the system.
+
+100 Unknown error occurred during I/O
+    An error occurred, but the system call failed to set errno to a
+    meaningful value.
+
+199 End of file
+
+200 File position was out of bounds
+    REXX level 4.00 does not allow you to use charin or linein to point
+    to a non-existent character, or to use charout or lineout to point
+    more than one byte beyond the end of file.  If you attempt this,
+    then NOTREADY will be raised with this error.
+
+201 Reposition attempted on transient stream
+    REXX does not allow you to reposition a stream unless it is a
+    persistent stream (i.e., a regular file).  Repositioning on a pipe
+    or tty is not allowed and will raise NOTREADY with this error.
+
+202 Write attempted on a read-only stream
+    This error occurs if you try to write to stdin, or to any stream
+    which was opened via the stream function without a name in read
+    mode (for instance, with popen or fdopen).
+_________________________________________________________________________

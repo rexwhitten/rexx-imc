@@ -1,0 +1,212 @@
+.TH rexx 1 "February 1999"
+.SH NAME
+rexx \- general purpose programming language
+.SH SYNOPSIS
+.PD 0
+.B rexx
+[
+.BR \- options
+] [
+.B \-x
+] [
+.I filename
+|
+.B \-
+] [
+.I arguments
+\&.\|.\|.\|]
+.PP
+.B rexx
+[
+.BR \- options
+]
+.BR \- { sc }
+.I instructions
+[
+.I arguments
+\&.\|.\|.\|]
+.PP
+.B rexx
+[
+.BR \- options
+]
+.B \-i
+[
+.I arguments
+\&.\|.\|.\|]
+.PP
+.B "rexx -v"
+.PD
+.SH DESCRIPTION
+
+Rexx is a procedural programming language that allows programs and
+algorithms to be written in a clear and structured way, and it is designed
+to be easy to use as well as flexible.  It keeps the use of special
+characters to a minimum to promote readability, and does not prevent
+the use of keywords as variables or program labels.  It uses a single
+datatype, namely the string of characters.  Rexx has been standardised by
+the American National Standards Institute, although the majority of
+interpreters are not yet fully compliant.  Most interpreters do however
+follow the reference work `The Rexx Language' by M. F. Cowlishaw, second
+edition.
+.PP
+The interpreter documented by this manual page is from the REXX/imc
+package.  The syntax of the Rexx language is described in other documents
+from that package.  This manual page contains a summary of how to invoke
+the Rexx interpreter.
+.PP
+In the first form of invocation,
+.B rexx
+is supplied with the name of a program to execute.  (Systems supporting
+the `#!' notation invoke interpreters this way.)  If the
+.I filename
+parameter is omitted or is a single hyphen then the program will be
+read from the standard input; otherwise the program will be read from
+the given file.  The interpreter will search for the program along
+the path given by the environment variable REXXPATH or (if that is
+not set) PATH.  If
+.I filename
+does not contain a dot and the file
+.RI ` filename .rexx'
+can be found then it is read and executed; otherwise
+.I filename
+is treated as the literal name of the file to be executed.
+.PP
+In the second form of invocation the program is supplied as a single list
+of instructions following the
+.BR \-s " or " \-c
+flags (which are equivalent).  Note that this list will usually need to
+be supplied in quotes to stop the shell from tokenising it.  The instructions
+will be treated just as if they had been read in from a program file.
+.PP
+The
+.B \-i
+flag supplies a minimal program to the interpreter which makes it enter
+interactive trace mode, in which instructions may be typed in and will
+be executed immediately.  This should be ended by typing
+.RB ` exit '.
+.PP
+The command
+.RB ` "rexx \-v" '
+with no further arguments causes the interpreter to print its version
+information and exit.
+.PP
+Any text remaining after the flags and program name have been processed
+is collected up and passed to the Rexx program as a parameter string.
+This parameter string should not begin with a hyphen, or it will be
+mistaken for a flag; the exception is when the
+.I filename
+parameter is present: this terminates flag processing and all further
+text is taken to be the program's argument string.
+.SH OPTIONS
+The following are valid flags.
+.TP
+.BI \-c " string"
+Same as
+.BI \-s " string"\fR.
+.TP
+.B \-i
+Equals: -t?a -s 'do forever;nop;end'
+.TP
+.BI \-s " string"
+Specifies a string of instructions to execute as a program.
+.TP
+.BI \-t val
+Executes the Rexx instruction `TRACE
+.IR val '
+before running the program.
+.TP
+.B \-v
+Causes the version string to be printed.  If this is the only option then
+the interpreter exits, otherwise it continues as normal.
+.TP
+.B \-x
+Stops the interpreter from appending `.rexx' to the file name, and
+makes it ignore the first line of the file (which can therefore be a
+line of shell script used to invoke the interpreter).  This flag ends
+argument processing and the next parameter is taken to be the literal name
+of the file to execute.
+.PP
+Any keyword recognised by the Rexx OPTIONS instruction is also a valid flag
+for the interpreter when preceded by a hyphen.  These are as follows.
+.TP
+.B \-expose
+Allow `PROCEDURE EXPOSE' at the beginning of a program.
+.TP
+.B \-noexpose
+Disallow `PROCEDURE EXPOSE' at the beginning of a program.
+.TP
+.B \-nosetrc
+Do not make input and output operations set the RC special variable.
+.TP
+.B \-nosigpipe
+Exit when a SIGPIPE signal is received.
+.TP
+.B \-setrc
+Make input and output operations set the RC special variable.
+.TP
+.B \-sigpipe
+Trap SIGPIPE signals instead of exiting.
+.TP
+.BI \-tracefile= file
+Send trace output to the named
+.IR file .
+The name can be
+.RB ` stdout '
+or
+.RB ` stderr '
+to send trace output to the standard output or standard error, respectively.
+This option may be abbreviated to
+.BI \-trace= file\fR.
+.PP
+See the REXX/imc language reference for more information.
+.SH ENVIRONMENT
+.TP 9
+REXXEXT
+The default filename extension added to the names of Rexx programs
+(default `.rexx').
+.TP 9
+REXXIMC
+The directory in which the
+.BR rxque (1)
+program can be found (this only needs to be set if for some reason
+the interpreter cannot find it, or if a different version is required).
+.TP 9
+REXXLIB
+The (colon-separated) path in which to search for Rexx function libraries
+or shared objects requested by RxFuncAdd and RexxRegisterFunctionDll.
+The default value was chosen at compile time to be@REXXLIBDIR@.
+.TP 9
+REXXFUNC
+The path in which to search for external functions requested by Rexx
+programs.  The default value is the value of REXXPATH.
+.TP 9
+REXXPATH
+The path in which to search for the program named on the command line.
+The default value is the value of PATH with the current directory
+appended.
+.TP 9
+RXSTACK
+Used in the interface between the Rexx stack and its clients (including
+the interpreter itself).  If set it contains the name of the communication
+socket.  See
+.BR rxque (1)
+and the REXX/imc technical reference for more details.
+.SH SEE ALSO
+.BR rxque (1), " rxstack" (1),
+The REXX/imc documentation.
+.SH BUGS
+Too slow and too much of a hack.
+.PP
+See the REXX/imc language reference for specific limitations.
+.SH AUTHOR
+Ian Collier <imc@comlab.ox.ac.uk>
+.SH NOTICE
+REXX/imc is copyright, but free.  Permission is granted to use, copy and
+redistribute its code, provided that the same permission is granted to all
+recipients, and that due acknowledgement is given to the author.
+.PP
+This software is provided on an as-is basis in the hope that it will be
+useful.  It comes with no warranty of any kind, either expressed or implied,
+and the author will not be held responsible for any damages arising out
+of the use of the software.

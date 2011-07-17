@@ -1,0 +1,60 @@
+#!/bin/sh
+
+unused=/tmp/Awk$$.1; test>$unused
+declared=/tmp/Awk$$.2; test>$declared
+used=/tmp/Awk$$.3; test>$used
+undefined=/tmp/Awk$$.4; test>$undefined
+ignored=/tmp/Awk$$.5; test>$ignored
+defined=/tmp/Awk$$.6; test>$defined
+usual=/tmp/lint; test>$usual
+
+awk 'BEGIN {pointer=0; evaluation=0;}
+/warning: argument .* unused in function/ {print $1" "$4" in "$8>unused;next;}
+/, arg\. . used inconsistently/ {tmp=sprintf("%s %s %s",$1,$2,$3);
+                                 printf "%-30s %s :: %s\n",tmp,$6,$8>used;
+				 next;}
+/value declared inconsistently/ {printf "%-30s %s :: %s\n",$1,$5,$7>declared;
+                                 next;}
+/returns value which is .* ignored$/ {printf "%-10s%s\n",$6,$1>ignored;next;}
+/used\( .* \), but not defined$/ {printf "%-16s %s\n",$1,$3>undefined;next;}
+/defined\( .* \), but never used$/ { printf "%-16s %s\n",$1,$3>defined;next;}
+/warning: possible pointer alignment problem$/ {pointer++;next;}
+/warning: evaluation order for .* undefined$/ {evaluation++;next;}
+   {print >usual;}
+END {printf "\n %4d pointer alignment problems and\n",pointer>usual;
+     printf " %4d evaluation order problems\n",evaluation>usual;}
+' unused=$unused declared=$declared used=$used defined=$defined \
+undefined=$undefined ignored=$ignored usual=$usual;
+
+echo '
+
+Arguments which are used inconsistently:
+' >> $usual
+cat $used>>$usual
+echo '
+
+Values which are declared inconsistently:
+' >> $usual
+cat $declared>>$usual
+echo '
+
+Arguments which are unused:
+' >> $usual
+cat $unused>>$usual
+echo '
+
+Symbols which are not defined:
+' >> $usual
+cat $undefined>>$usual
+echo '
+
+Functions which are not used:
+' >> $usual
+cat $defined>>$usual
+echo '
+
+Return values which are ignored:
+' >> $usual
+cat $ignored>>$usual
+
+rm $unused $declared $used $undefined $ignored $defined

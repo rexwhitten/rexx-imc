@@ -1,0 +1,37 @@
+REXX/imc 1.7 News
+
+Version 1.7 has several minor features added and some bugs fixed.  See the
+HISTORY file for a detailed list of changes.  There are a few important
+changes which affect the way in which the interpreter is invoked:
+
+ - The default file extension has been changed to ".rexx" because ".exec"
+   is an anomalous leftover from CMS and not really relevant to the Unix
+   environment.  If you have Rexx programs ending in ".exec" and do not wish
+   to rename them then set the environment variable REXXEXT to the value
+   ".exec".  The default extension could also be changed at compile time
+   to avoid having to set the environment variable.
+
+ - The "-x" flag is no longer necessary merely to avoid the ".rexx" being
+   added to the program name you supply.  The interpreter will now find the
+   program without the extension if it is not present with the extension.
+
+ - When REXX/imc is installed, the Rexx function package is no longer placed
+   in the binary directory, but in the library directory (or any other
+   directory that you specify).  The path which REXX/imc searches for
+   function packages is compiled in (but may still be overridden with the
+   REXXLIB environment variable).  If there are pre-compiled binaries then
+   it is possible that they retain the old behaviour of looking in the
+   binary directory, in order to avoid having a specific path compiled
+   in.
+
+Other new features in version 1.7 include:
+
+ - Limited date conversion and time conversion by passing three arguments
+   to the DATE and TIME functions (see the Rexx Reference for details).
+   The DATE function is also now Year 2000 compatible.
+ - New stream commands, including most of the QUERY commands from OS/2 Rexx.
+ - RxFuncAdd, RxFuncDrop and RxFuncQuery functions which allow a Rexx
+   program to load an external function package.
+ - RexxRegisterFunctionDll has been added to the API.
+ - The package now includes Unix manual pages.
+

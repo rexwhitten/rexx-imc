@@ -1,0 +1,10 @@
+REXX/imc does not need to know the current date or time except for the
+DATE and TIME functions and the QUERY DATETIME and QUERY TIMESTAMP stream
+commands.  These have been tested for year 2000 compatibility and therefore
+it is not expected that REXX/imc >= 1.7 will experience any problems after
+year 2000 begins.  As things currently stand, there will be a problem in
+the year 2038 when the Unix date, stored as a 31-bit integer, rolls over
+to a negative number.
+
+As always though, the program is supplied on an as-is basis and comes with
+no warranty, either before or after the year 2000.

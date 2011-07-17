@@ -1,0 +1,70 @@
+.TH rxque 1 "February 1999"
+.SH NAME
+rxque \- data queue server
+.SH SYNOPSIS
+.B rxque
+[
+.B \-csh
+|
+.I filename
+]
+.SH DESCRIPTION
+.B rxque
+is a daemon which serves a data queue, normally used by
+.BR rexx (1)
+which starts it automatically, although it can be started manually.
+It runs in the background and accepts requests from
+.BR rxstack (1)
+or from Rexx programs until terminated with signal 15.
+.SH USAGE
+The server communicates with clients via a Unix-domain socket.
+If a
+.I filename
+parameter is given,
+.B rxque
+uses this as the name of the socket and prints the
+process id of the server to its standard output.  This should
+be saved and used to terminate the server with signal 15 when
+it is no longer required.  If no
+.I filename
+parameter is supplied,
+.B rxque
+generates a filename of its own and outputs both the filename
+and the process id to its standard output in the form of settings
+for the environment variables RXSTACK and RXSTACKPROC, respectively.
+The default format is two `NAME=value' pairs,
+suitable for interpretation by a Bourne shell.  If the
+.B \-csh
+flag is supplied then the format will be two `setenv' commands
+suitable for interpretation by a C-shell.  Writing a command
+such as:
+.PP
+.B eval `rxque -csh`
+.PP
+will thus set the environment variables.
+.PP
+The variable RXSTACK containing the socket file name
+must be exported to the environment in order for clients to
+be able to use the stack.
+.SH OPTIONS
+.TP
+.B \-csh
+Use the `setenv' format of output.
+.TP
+.I filename
+Use the
+.I filename
+as the name of the socket and just output the process id of the
+server.
+.SH ENVIRONMENT
+.TP
+RXSTACK
+The name of the socket used for communication with the server.
+.TP
+RXSTACKPROC
+The process id of the server.
+.SH SEE ALSO
+.BR rxstack (1), " rexx" (1),
+The REXX/imc documentation.
+.SH AUTHOR
+Ian Collier <imc@comlab.ox.ac.uk>

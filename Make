@@ -1,0 +1,456 @@
+#!/bin/sh
+
+# export variables
+# set -a
+# set -a doesn't always work, so export them explicitly instead...
+
+export BINDIR CC CCFLAG COMPILEFLAG DEBUG DLLFLAG LD LDL LIBDIR LIBRARIES
+export LINK LINKFLAG LREXX MAKE MAKEFILE MANDIR MATH OPTFLAG PIC PREFIX RANLIB
+export REXXIMC REXXLIB REXXLIBDIR RUNLIBS RXDAY RXMONTH RXYEAR SMALL SOFLAG
+export SOLINK SRC STRIPFLAG USEDLLFLAG VER VERBOSE
+
+#######################################################################
+# These are things which you might reasonably expect to fiddle with...
+SRC=.                      # directory containing the source of REXX/imc
+MAKE=make
+MAKEFILE=Makefile.REXXimc
+CC=gcc                     # compiler and linker for programs
+LD=ld                      # linker for shared objects
+COMPILEFLAG=""             # general compilation flags for cc
+LINKFLAG=""                # general linker flags *for cc*
+#STUFF="-DSTUFF_STACK"     # uncomment if you like queuing stack to keyboard
+                           # (not guaranteed to work on all systems)
+SMALL=false                # true if you like small executables (not guaranteed
+                           # and not for ELF executables either)
+
+# See below for destinations of files.
+#######################################################################
+
+# The above things and the destination directories may be supplied as
+# parameters on the command line, as in 'make'.
+while case $1 in
+   *=*) eval "$1";;
+     *) false;;
+esac
+do shift; done
+
+if [ ! -f $SRC/rexx.c ]; then
+   echo "Where are the source files?  Can't find rexx.c in $SRC" >&2
+   exit 1
+fi
+
+# The REXX/imc version
+VER=1.7
+
+# Development use only - get today's date, remove leading zeros
+# RXDAY=`date +%d`
+# RXMONTH=`date +%m`
+# RXYEAR=`date +%y`
+# RXDAY=`expr $RXDAY + 0`
+# RXMONTH=`expr $RXMONTH + 0`
+# RXYEAR=`expr $RXYEAR + 0`
+
+# The date of this release
+RXDAY=25
+RXMONTH=2
+RXYEAR=102
+
+#######################################################################
+# Where will the binary and library eventually end up?
+#
+# If "install" is not specified then all files end up in the current
+# directory; but it is useful (though not essential) to know where
+# the executable will be when it is installed.  If "install" is
+# specified then the binaries and shared library file will be placed
+# in their destinations.  The ".o" files remain in the current directory.
+#
+# If REXXIMC is set then this is assumed to be the final resting place
+# of the executable, for information purposes only.  Otherwise it is
+# computed as described below.  
+#
+# The path which Rexx searches for function libraries can be set at compile
+# time in the variable REXXLIB [actually REXXLIBDIR - the value will be
+# copied because the REXXLIB variable is reused later for the name of the
+# librexx file].  The default value of REXXLIB is the same as LIBDIR (see
+# below).  At compile time REXXLIB can be a colon-separated path, or the
+# special value "" which means to search the binary directory determined
+# at run time (while searching for the rxque program).  At install time
+# REXXLIB must name a directory, which is where the math library will be
+# installed.
+#
+# If BINDIR is set then this assumed to be the installation directory
+# for the binaries.  Similarly, LIBDIR is the installation directory for
+# the shared library.  Otherwise, if PREFIX is set then $PREFIX/bin and
+# $PREFIX/lib are used.  If PREFIX is not set then it is calculated
+# by the following code.  On Solaris it ends up as /opt/REXXimc and
+# on other systems it ends up as /usr/local.
+#
+# Manual pages will be installed in MANDIR, default $PREFIX/man/man1.
+#######################################################################
+# [May need to add more system types here; this was started as part of
+#  adding support for Solaris2.N's (SunOS 5.N) use of "/opt/<pkg>"]
+
+UNAME_R=`(uname -r) 2>/dev/null` || UNAME_R=unknown
+UNAME_S=`(uname -s) 2>/dev/null` || UNAME_S=unknown
+
+if [ "x$PREFIX" = "x" ]; then
+    case $UNAME_S:$UNAME_R in
+        SunOS:5.*)
+            PREFIX="/opt/REXXimc"
+            ;;
+        *|unknown)
+            PREFIX="/usr/local"
+            ;;
+    esac
+fi
+
+: ${BINDIR=$PREFIX/bin}
+: ${LIBDIR=$PREFIX/lib}
+: ${MANDIR=$PREFIX/man/man1}
+: ${REXXIMC=$BINDIR}
+: ${REXXLIB=$LIBDIR}
+: ${REXXLIBDIR=$REXXLIB}
+REXXLIB=""
+# BINDIR and LIBDIR are set to the current dir later unless installing.
+#######################################################################
+# Get generic compilation flags based on commandline option
+
+OPTFLAG=""            # generic -O or -g etc type flags
+STRIPFLAG=""          # -s flag for linking
+DEBUG=""              # special object files for debugging
+LDL="-ldl"            # sometimes this is not used even when available
+
+# The first parameter may be a single letter, indicating the type of
+# compilation required.
+
+VERBOSE="@#"  # default to quiet in $MAKEFILE
+if [ "x$1" = xv -o "x$1" = x-v ]
+then VERBOSE="@echo";shift
+fi
+
+case ${1:-nothing} in
+   g)   # g (debug)
+        OPTFLAG=-g
+        shift
+        ;;
+   a)   # a (profile)
+        OPTFLAG=-a
+        CC=cc
+        shift
+        ;;
+   p)   # p (profile with prof)
+        OPTFLAG="-p -DNO_LDL"
+        LDL=""
+        shift
+        ;;
+  pg)   # pg (profile with gprof)
+        OPTFLAG="-pg -DNO_LDL"
+        LDL=""
+        shift
+        ;;
+   d)   # d (really debug)
+        OPTFLAG="-g -DDEBUG"
+        DEBUG="" 
+        if [ -f /usr/lib/debug/malloc.o -a -f /usr/lib/debug/mallocmap.o ]; then
+           DEBUG="/usr/lib/debug/malloc.o /usr/lib/debug/mallocmap.o"
+           OPTFLAG="$OPTFLAG -DMALLOC_DEBUG"
+        fi
+        shift
+        ;;
+   o)   # o (optimise)
+        OPTFLAG="-O2"
+        STRIPFLAG="-s"
+        shift
+        ;;
+   n)   # n (no flags)
+        OPTFLAG=""
+        STRIPFLAG=""
+        shift
+        ;;
+   v)   # v (make the Makefile verbose)
+        VERBOSE="@echo"
+        shift
+        ;;
+   *)   # <default>
+        OPTFLAG="-O2"
+        STRIPFLAG="-s"
+        ;;
+esac
+
+if $SMALL
+then LINK="LD_OPTIONS='-n -Bdynamic' $CC"
+else LINK=$CC
+fi
+
+#######################################################################
+# Now calculate system dependent variables for Makefile
+# Note: if OPTFLAG is -O2 it can be changed to suit the compiler.
+
+echo "Processing REXX/imc for $UNAME_S $UNAME_R"
+
+LREXX="-lrexx"   # we could name the object file explicitly instead
+SOLINK=""        # usually don't link librexx.so.version to librexx.so
+
+case $UNAME_S:$UNAME_R in
+    SunOS:5.*)   # Solaris 2.N
+#       if [ x`echo $LD_LIBRARY_PATH` != x ]; then
+#           echo "Under Solaris 2.N, the use of:  " \
+#               LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
+#               "  is NOT recommended..." >&2
+#           exit 1
+#       fi
+        RANLIB="@true"
+        LIBRARIES=$LDL
+        REXXLIB="librexx.so"
+        SOLINK="librexx.so"
+        MATH="rxmathfn.rxfn"
+        case $CC in
+            gcc)
+                CCFLAG="-DFSTAT_FOR_CHARS -DHAS_MALLOPT -DDECLARE_RANDOM -DDECLARE_TIMEZONE"
+                PIC="-fPIC"
+                SOFLAG="-G"
+                DLLFLAG="-G"
+                RUNLIBS='-R$(LIBDIR)'
+                LIBRARIES="$LIBRARIES -lsocket -lnsl -lmalloc"
+                ;;
+            cc)
+                CCFLAG="-DFSTAT_FOR_CHARS -DHAS_MALLOPT -DDECLARE_RANDOM -DDECLARE_TIMEZONE"
+                [ "x$OPTFLAG" = x-O2 ] && OPTFLAG="-fast"
+                PIC="-KPIC"
+                SOFLAG="-G"
+                DLLFLAG="-G"
+                RUNLIBS='-R$(LIBDIR)'
+                LIBRARIES="$LIBRARIES -lsocket -lnsl -lmalloc"
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                     "- trying the cc ones" >&2
+                CCFLAG="-DFSTAT_FOR_CHARS -DHAS_MALLOPT -DDECLARE_RANDOM  -DDECLARE_TIMEZONE"
+                PIC="-KPIC"
+                SOFLAG="-G"
+                DLLFLAG="-G"
+                RUNLIBS='-R$(LIBDIR)'
+                LIBRARIES="$LIBRARIES -lsocket -lnsl -lmalloc"
+                ;;
+        esac
+        ;;
+    SunOS:*)   # All other SunOS versions
+        LIBRARIES="-ldl"
+        REXXLIB="librexx.so"
+        RANLIB=ranlib
+        MATH="rxmathfn.rxfn"
+        CCFLAG="-DHAS_TTYCOM -DHAS_MALLOPT -DDECLARE_RANDOM  -DHAS_GMTOFF"
+        DLLFLAG="-assert pure-text"
+        case $CC in
+            gcc)
+                PIC="-fPIC"
+                ;;
+            cc)
+                PIC="-PIC"
+                [ "x$OPTFLAG" = x-O2 ] && OPTFLAG="-O4"
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                      "- trying the cc ones" >&2
+                PIC="-PIC"
+                ;;
+        esac
+        ;;
+    AIX:3*)
+        LIBRARIES="-lbsd"
+        REXXLIB="librexx.a"
+        RANLIB=ranlib
+        MATH=""
+        case $CC in
+            gcc)
+                CCFLAG="-DNO_LDL -fsigned-char"
+                PIC=""
+                ;;
+            cc)
+                CCFLAG="-DNO_LDL -qchars=signed"
+                PIC=""
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                      "- trying the cc ones" >&2
+                CCFLAG="-DNO_LDL -qchars=signed"
+                PIC=""
+                ;;
+        esac
+        ;;
+    HP-UX:*)
+        RANLIB="@true"
+        LIBRARIES=""
+        REXXLIB="librexx.a"
+        MATH=""
+        PIC=""
+        [ "x$OPTFLAG" = x-O2 ] && OPTFLAG="+O2"
+        case $CC in
+            cc)
+                CCFLAG="-DHAS_MALLOPT -D_HPUX_SOURCE -DNO_LDL"
+                ;;
+            c89)
+                CCFLAG="-D_HPUX_SOURCE -DHAS_MALLOPT -DNO_LDL"
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                      "- trying the cc ones" >&2
+                CCFLAG="-DHAS_MALLOPT -D_HPUX_SOURCE -DNO_LDL"
+                ;;
+        esac
+        ;;
+    IRIX:*|IRIX64:*)
+        RANLIB="@true"
+        LIBRARIES=""
+        REXXLIB="librexx.so"
+        SOLINK="librexx.so"
+        MATH=rxmathfn.rxfn
+        PIC=""
+        SOFLAG='-shared -ignore_unresolved'
+        DLLFLAG='-shared -soname $(SONAME) -ignore_unresolved'
+        USEDLLFLAG='-call_shared -Wl,-rpath,$(LIBDIR)'
+        case $CC in
+            cc) case $UNAME_S in
+                IRIX)   CCFLAG="-signed -Olimit 1400"
+                        ;;
+                IRIX64) CCFLAG="-signed -OPT:Olimit=2700 -woff all -DPOINTER64"
+                        ;;
+                esac
+                ;;
+            gcc)CCFLAG="-fsigned-char"
+                SOFLAG="$SOFLAG -n32"
+                DLLFLAG="$DLLFLAG -n32"
+                STRIPFLAG=""
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                      "- trying the cc ones" >&2
+                CCFLAG="-signed -Olimit 1400"
+                ;;
+        esac
+        ;;
+    OSF1:*)
+        LIBRARIES="-lbsd"
+        REXXLIB="librexx.so"
+        SOLINK="librexx.so"
+        RANLIB="@true"
+        MATH="rxmathfn.rxfn"
+        PIC=""
+        SOFLAG='-shared -expect_unresolved "*"'
+        DLLFLAG='-shared -soname $(SONAME) -expect_unresolved "*"'
+        USEDLLFLAG='-call_shared -Wl,-rpath,$(LIBDIR)'
+        CCFLAG="-DHAS_MALLOPT -DHAS_GMTOFF -DPOINTER64"
+        case $CC in
+            cc) 
+                CCFLAG="$CCFLAG -Olimit 1400"
+                [ "x$OPTFLAG" = x-O2 ] && OPTFLAG="-O3"
+                ;;
+            gcc) # already OK
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                      "- trying the gcc ones" >&2
+                ;;
+        esac
+        ;;
+    Linux:1*)
+        REXXLIB="librexx.a"
+        RANLIB=ranlib
+        MATH=""
+        PIC=""
+        LIBRARIES=""
+        case $CC in
+            gcc)
+                CCFLAG="-DNO_LDL -DFSTAT_FOR_CHARS"
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                      "- trying the gcc ones" >&2
+                CCFLAG="-DNO_LDL -DFSTAT_FOR_CHARS"
+                ;;
+        esac
+        ;;
+    Linux:2*)
+        REXXLIB="librexx.so"
+        SOLINK="librexx.so"
+        DLLFLAG="-shared"
+        SOFLAG="-shared"
+        : ${RUNLIBS='-Wl,-rpath,$(LIBDIR)'} # can be overridden by environment
+        RANLIB=ranlib
+        MATH="rxmathfn.rxfn"
+        PIC="-fpic"
+        LIBRARIES="$LDL"
+        case $CC in
+            gcc)
+                CCFLAG="-DFSTAT_FOR_CHARS"
+		LD=gcc
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                      "- trying the gcc ones" >&2
+                CCFLAG="-DFSTAT_FOR_CHARS"
+		LD=$CC
+                ;;
+        esac
+        egrep -q tm_gmtoff /usr/include/time.h && CCFLAG="$CCFLAG -DHAS_GMTOFF"
+        ;;
+    FreeBSD:*)
+        REXXLIB="librexx.so"
+        RANLIB=ranlib
+        MATH=rxmathfn.rxfn
+        LIBRARIES=""
+        SOFLAG="-Bshareable"
+        DLLFLAG="-Bshareable"
+#       LREXX='$(LIBDIR)/$(SONAME)'
+#       Uncomment above line if you have problems with LD_LIBRARY_PATH
+        case $CC in
+            gcc)
+                CCFLAG="-DHAS_TTYCOM -D_REQUIRED -DRENAME_UNDELETE -DHAS_GMTOFF"
+                PIC="-fPIC"
+                ;;
+            *)  echo "Warning: I don't know the options for $CC"\
+                      "- trying the gcc ones" >&2
+                CCFLAG="-DHAS_TTYCOM -D_REQUIRED -DRENAME_UNDELETE -DHAS_GMTOFF"
+                PIC="-fPIC"
+                ;;
+        esac
+        ;;
+    unknown:*|*:*)
+        echo "I am not configured for this platform - guessing some options" >&2
+        echo "(You will not be able to use shared libraries)" >&2
+        REXXLIB="librexx.a"
+        RANLIB=ranlib
+        MATH=""
+        LIBRARIES=""
+        PIC=""
+        if [ -f /usr/include/sys/ttycom.h ]
+        then CCFLAG="-DHAS_TTYCOM -DNO_LDL -DFSTAT_FOR_CHARS"
+        else CCFLAG="-DNO_LDL -DFSTAT_FOR_CHARS"
+        fi
+        ;;
+esac
+
+CCFLAG="$COMPILEFLAG $STUFF $CCFLAG"
+LINKFLAG="$LINKFLAG $STRIPFLAG"
+[ "x$SOLINK" != x ] && SOLINK='$(LIBDIR)'/"$SOLINK"
+
+#######################################################################
+# If installing, make sure the destination directories exist.
+# Otherwise, the destination is the current directory.
+
+case "x$1" in
+    xinstall*|xuninstall*)
+        if [ -d $BINDIR ] || mkdir -p $BINDIR; then :;
+        else echo "Unable to make binary directory" >&2; exit 1
+        fi
+        if [ -d $LIBDIR ] || mkdir -p $LIBDIR; then :;
+        else echo "Unable to make library directory" >&2; exit 1
+        fi
+        if [ -d $REXXLIBDIR ] || mkdir -p $REXXLIBDIR; then :;
+        else echo "Unable to make Rexx library directory" >&2; exit 1
+        fi
+        ;;
+    *)
+        BINDIR=.
+        LIBDIR=`pwd`
+esac
+
+# Variables are exported above
+MAKE_PARMS=${*:-all}
+if [ "x$1" = xtest ]; then
+    $MAKE -n -f $SRC/$MAKEFILE all
+else
+    $MAKE -f $SRC/$MAKEFILE $MAKE_PARMS
+fi

@@ -1,0 +1,53 @@
+
+The REXX/imc distribution contains the following files, as well as all the
+README* files:
+
+calc.c, rexx.c, rxfn.c,             These comprise the source for REXX/imc
+rxmathfn.c, rxque.c, rxstack.c,     and may be compiled with the "Make"
+shell.c, util.c, globals.c,         program (see README.make for details).
+main.c, interface.c, rexxsaa.h
+const.h, globals.h, functions.h
+
+rexx.1.in, rxstack.1, rxque.1       Unix manual pages
+
+THE-2.7-rexximc.patch               a patch which may be applied to THE-2.7
+                                    to make it register the functions in
+                                    upper case.
+
+Make                                a shell script containing to invoke the
+                                    Makefile with the correct options
+Makefile.REXXimc                    ehe Makefile
+
+lintfilter                          a shell script to process lint messages
+                                    (used if you type "./Make lint"; not
+                                    guaranteed to work)
+
+rexx.ref                            These are the documentation files. (See
+rexx.summary                        README.docs for more information)
+rexx.tech
+rexx.info
+
+rexxtest.rexx                       A selection of various test for REXX/imc
+
+rexxcps.rexx                        A speed tester by Mike Cowlishaw
+
+rxmathfn.rexx                       A Rexx implementation of the math library
+
+rxmathfn.rxlib                      The math library dictionary
+
+box                                 A sample Rexx program which puts the
+                                    output from a command in a box
+
+shell.rexx                          A sample Rexx program which implements a
+                                    simple shell.  You can observe the
+                                    difference between the COMMAND and UNIX
+                                    environments by executing this shell and
+                                    typing "; address unix" and
+                                    "; address command" at the prompt as well
+                                    as ordinary Unix commands.
+
+wishlist                            Obsolete (used to be a list of possible
+                                    improvements).
+
+HISTORY                             A list of versions of REXX/imc with
+                                    descriptions of the changes made.

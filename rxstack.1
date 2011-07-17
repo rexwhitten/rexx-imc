@@ -1,0 +1,77 @@
+.TH rxstack 1 "February 1999"
+.SH NAME
+rxstack \- access the Rexx data queue
+.SH SYNOPSIS
+.B rxstack
+[
+.B \-fifo
+|
+.B \-lifo
+] [
+.B \-drop
+|
+.B \-num
+|
+.B \-peek
+|
+.B \-pop
+|
+.B \-print
+|
+.BI \-string " data"
+]
+.SH DESCRIPTION
+.B rxstack
+is a program to access the data queue served by
+.BR rxque (1)
+and used by
+.BR rexx (1).
+It can be used to stack the output of a Unix command for use in
+Rexx programs or to feed the contents of the queue into a Unix
+command.  With no parameters,
+.B rxstack
+reads lines from the standard input and stacks them in FIFO
+(first in, first out) order.  This behaviour may be modified by
+supplying an alternative order and/or an alternative action
+to perform.
+.SH OPTIONS
+.TP
+.B \-fifo
+Specify FIFO order (the first item to be stacked will be the first
+item output).
+.TP
+.B \-lifo
+Specify LIFO order (the last item to be stacked will be the first
+item output, and this will also be output before all items stacked
+in FIFO order).
+.TP
+.B \-drop
+Delete the first item in the queue.
+.TP
+.B \-num
+Print the current number of items in the queue.
+.TP
+.B \-peek
+Print the first item in the queue without changing the queue.
+.TP
+.B \-pop
+Remove and print the first item in the queue.
+.TP
+.B \-print
+Remove and print successive items from the queue until the queue
+is exhausted.  (It is possible for this command to leave some
+items in the queue if it is terminated by a signal such as SIGPIPE
+before the queue is exhausted.)
+.TP
+.BI \-string " data"
+Add the
+.I data
+to the queue as a single item.
+.SH ENVIRONMENT
+The environment variable RXSTACK must be set to the name of the
+communication socket which is in use by a stack server.
+.SH SEE ALSO
+.BR rexx (1), " rxque" (1),
+The REXX/imc documentation.
+.SH AUTHOR
+Ian Collier <imc@comlab.ox.ac.uk>

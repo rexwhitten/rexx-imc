@@ -1,0 +1,10 @@
+
+I will be happy to receive all bug reports or questions about REXX/imc at
+
+                           imc@comlab.ox.ac.uk
+
+Please try to pinpoint any fault as accurately as possible, for instance by
+making a copy of the program that caused the fault and deleting all
+unnecessary lines.  Mail me a trace (using, for example, "trace r") which
+will enable me to reproduce the fault, together with a description of the
+fault.
