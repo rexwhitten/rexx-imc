@@ -272,7 +272,7 @@ PRXSTRING result;
    extern char *month[]; /* from rxdate() in rxfn.c */
    char **arglist=0;  /* a copy of the argument addresses */
    int *arglens=0;    /* a copy of the argument lengths */
-   int i,j,l;
+   int i,j;
    long n;
    char *howcall;     /* string to represent calltype */
    char sourcestring[200]; /* string for "parse source" */
