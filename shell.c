@@ -25,7 +25,6 @@ static hashitem **hashcreate(); /* Create a hash table */
 static void *search();          /* search in the hash table */
 static char *locate();          /* find out the path for a command */
 static void hashcmd();          /* Execute the "hash" builtin command */
-static void hashdel();          /* Delete an element from the hash table */
 
 char **arguments=0; /* An array to hold the argument list */
 unsigned argnum=0;  /* The number of elements allocated so far */
@@ -176,23 +175,6 @@ char *name;
    }
    return name; /* if the name contains '/' or wasn't found in the path,
                    return it unchanged. */
-}
-
-static void hashdel(name)  /* delete name from hash table, if present */
-char *name;
-{
-   int h=hashfn(name,hashbuckets);
-   hashitem **i=&hashtable[h];
-   hashitem *j;
-   int c;
-   if(!(j=*i)) return;                   /* No items in this bucket */
-   while(c=strcmp(name,(char *)(j+1))){  /* search for the given name */
-      if(c<0) return;
-      i=&(j->next);
-      if(!(j=*i)) return;
-   }
-   *i=j->next;                        /* link the next item to the previous  */
-   free(j);                           /* so deleting this one from the chain */
 }
 
 void hashclear()          /* Clear the hash table (eg when PATH changes) */
