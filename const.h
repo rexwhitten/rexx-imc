@@ -69,7 +69,7 @@
 #define Einit      -1   /* Initialisation error */
 #define Ehalt       4   /* Program interrupted */
 #define Emem        5   /* Machine storage exhausted */
-#define Elcomm      6   /* Unmatched '/*' */
+#define Elcomm      6   /* Unmatched comment */
 #define Equote      6   /* Unmatched quote */
 #define Enowhen     7   /* Expected WHEN */
 #define Eselect     7   /* Expected OTHERWISE */
