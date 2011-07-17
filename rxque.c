@@ -18,7 +18,7 @@ void term();                         /* cleanup function */
 
 struct {u_short af;char name[100];}  /* a mimic of struct sockaddr, but */
        sock={AF_UNIX};               /* with a longer name field. */
-int socklen;                         /* The length of the socket name */
+socklen_t socklen;                         /* The length of the socket name */
 fd_set sockfds;                      /* Collection of fds in use */
 int maxfd;                           /* maximum fd in use */
 int s;                               /* Socket fd */
