@@ -8,5 +8,5 @@ PREFIX = /usr
 
 # flags
 
-CCFLAGS= -O2 -fpic -Dlinux -DFSTAT_FOR_CHARS -DHAS_GMTOFF
+CCFLAGS= -O2 -fpic -Dlinux -Duclibc -DFSTAT_FOR_CHARS -DHAS_GMTOFF
 LDL = -ldl

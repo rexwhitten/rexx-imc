@@ -40,7 +40,11 @@
 
 #ifndef _CNT
 # ifdef linux
-#  define _CNT(fp) ((fp)->_IO_read_end - (fp)->_IO_read_ptr)
+#  ifdef uclibc
+#   define _CNT(fp) ((fp)->__bufpos - (fp)->__bufread)
+#  else
+#   define _CNT(fp) ((fp)->_IO_read_end - (fp)->_IO_read_ptr)
+#  endif
 # else
 #  ifdef __FreeBSD__
 #   define _CNT(fp) ((fp)->_r)
