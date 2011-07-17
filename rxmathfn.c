@@ -45,17 +45,17 @@ dictionary rxdictionary[]=
 #else
 
 dictionary rxdictionary[]=
-{  "ACOS"   ,rxacs,
-   "ASIN"   ,rxasn,
-   "ATAN"   ,rxatn,
-   "COS"    ,rxcos,
-   "EXP"    ,rxexp,
-   "LN"     ,rxln,
-   "SIN"    ,rxsin,
-   "SQRT"   ,rxsqr,
-   "TAN"    ,rxtan,
-   "TOPOWER",rxpower,
-   0        ,0
+{  {"ACOS"   ,rxacs},
+   {"ASIN"   ,rxasn},
+   {"ATAN"   ,rxatn},
+   {"COS"    ,rxcos},
+   {"EXP"    ,rxexp},
+   {"LN"     ,rxln},
+   {"SIN"    ,rxsin},
+   {"SQRT"   ,rxsqr},
+   {"TAN"    ,rxtan},
+   {"TOPOWER",rxpower},
+   {0        ,0}
 };
 
 #endif /* sgi */
