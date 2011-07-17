@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/param.h>
+#include <sys/wait.h>
 #include "const.h"
 #include "globals.h"
 #include "functions.h"

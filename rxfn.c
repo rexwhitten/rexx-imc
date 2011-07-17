@@ -12,6 +12,7 @@
 #include<setjmp.h>
 #include<sys/types.h>
 #include<sys/time.h>
+#include<signal.h>
 #ifndef Solaris
 #include<sys/ioctl.h>
 #endif
