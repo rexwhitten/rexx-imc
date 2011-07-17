@@ -74,7 +74,7 @@ install:
 	@for f in rexx.info rexx.ref rexx.summary rexx.tech; do \
 		install -m 644 $$f ${DESTDIR}${PREFIX}/share/doc/rexx-imc; \
 	done
-	@for f in box rexxcps.rexx rexxtest.rexx rxmathfn.rexx shell.rexx; do \
+	@for f in box.rexx rexxcps.rexx rexxtest.rexx rxmathfn.rexx shell.rexx; do \
 		install -m 644 $$f ${DESTDIR}${PREFIX}/share/doc/rexx-imc/examples; \
 	done
 .PHONY: all
